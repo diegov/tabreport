@@ -1,0 +1,19 @@
+[package]
+name = "tabreport_host"
+version = "0.1.0"
+authors = ["Diego Veralli <diegoov@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dbus-crossroads = "0.3.0"
+dbus = { version = "0.9", default-features = false }
+ctrlc = { version = "3.*", features = ["termination"] }
+byteorder = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json =  "1.0"
+serde_derive = "1.0"
+
+[dependencies.tabreport-common]
+path = "../common"

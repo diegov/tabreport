@@ -1,0 +1,44 @@
+#!/bin/env bash
+# Example using tabreport with dmenu under i3 or sway. It can select a window
+# It also supports bemenu: https://github.com/Cloudef/bemenu.git
+# It requires jq and uuidgen
+
+if [ "$DESKTOP_SESSION" = "i3" ]; then
+    cmd=i3-msg
+else
+    cmd=swaymsg
+fi
+
+function activate_window {
+    # The tabreport extension, on the browser side, will automatically focus the window,
+    # but switching to its workspace requires `focus_on_window_activation = urgent` (or
+    # just `focus` on sway since there's no urgency on Wayland) which gives applications
+    # too much power to forcibly change the workspace for my taste. This function uses
+    # a unique identifier temporarily prepended to the  window title to let us move to
+    # the right workspace, without relying on any i3 / sway auto-switch behaviour.
+
+    key="$1"
+    IFS=':' read -ra parts <<< "$key"
+    id="${parts[0]}"
+    
+    prefix="$(uuidgen):"
+    # Mark the tab's window by adding a prefix to the title
+    tabreport "$id" --mark "$prefix"
+    # Switch to window via the prefix
+    "$cmd" '[title="'"$prefix"'.*"] focus'
+    # Remove title prefix
+    tabreport "$id" --reset
+}
+
+jqtabfilter='.[] | (.tab_id | tostring) + ": " + .title + " (" + .url + ")"'
+
+args=( -i -l 10 -p switch )
+
+program=dmenu
+if which bemenu >/dev/null; then
+    program=bemenu
+    # bemenu supports a character prefix for the selected option, which is nice
+    args=( "${args[@]}" -P 'ᐅ' )
+fi
+
+tabreport | jq -r "$jqtabfilter" | "$program" "${args[@]}" | { read -r key _name; activate_window "$key" ; }

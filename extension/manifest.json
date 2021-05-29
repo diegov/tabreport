@@ -1,0 +1,31 @@
+{
+
+  "description": "Reports tab events to a native host",
+  "manifest_version": 2,
+  "name": "TabReport",
+  "version": "0.1.0",
+  "icons": {
+    "48": "icons/tabreport.svg"
+  },
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tabreport@diegoveralli.net",
+      "strict_min_version": "80.0"
+    }
+  },
+
+  "background": {
+    "scripts": ["background.js"]
+  },
+
+  "browser_action": {
+    "default_icon": "icons/tabreport.svg"
+  },
+
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "nativeMessaging"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "net.diegoveralli.tabreport",
+  "description": "Receive messages about open tabs",
+  "type": "stdio",
+  "allowed_extensions": [ "tabreport@diegoveralli.net" ]
+}
