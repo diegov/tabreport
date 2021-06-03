@@ -1,0 +1,27 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - run: rustup component add rustfmt
+    - run: rustup component add clippy
+    - run: sudo apt-get install -y --no-install-recommends libdbus-1-dev
+    - run: mkdir -p ~/.local/bin/
+    - name: Build
+      run: ./build.sh check
+    - name: Native extension install check
+      run: ./install_native.sh
