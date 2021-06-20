@@ -26,7 +26,7 @@ Building the extension requires the following
 - [`./build.sh`](build.sh)
 - [`./install_native.sh`](install_native.sh)
 - `cd extension`
-- `firefox tabreport-0.1.0.xpi`
+- `firefox tabreport-0.1.1.xpi`
 
 At this point Firefox should prompt you to install the extension.
 
