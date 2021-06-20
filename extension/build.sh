@@ -21,7 +21,7 @@ PATH="$THIS_SCRIPT_DIR"/node_modules/.bin/:"$PATH"
 mkdir -p icons
 node make-icon.js
 
-build_opts=(-i make-icon.js build.sh package.json package-lock.json)
+build_opts=(-i make-icon.js build.sh package.json package-lock.json icons/video.sh)
 
 web-ext lint "${build_opts[@]}"
 web-ext build --overwrite-dest "${build_opts[@]}"

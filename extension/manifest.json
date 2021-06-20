@@ -3,7 +3,7 @@
   "description": "Reports tab events to a native host",
   "manifest_version": 2,
   "name": "TabReport",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "icons": {
     "48": "icons/tabreport.svg"
   },
