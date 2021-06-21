@@ -25,6 +25,7 @@ cargo build -p tabreport_host --release
 install-binary target/release/tabreport_host tabreport_host
 
 mkdir -p "$NATIVE_MANIFEST_DIR"
+host/make_host_manifest "$BINPATH"/tabreport_host "$NATIVE_MANIFEST_DIR"
 
 cargo build -p tabreport_client --release
 install-binary target/release/tabreport_client tabreport

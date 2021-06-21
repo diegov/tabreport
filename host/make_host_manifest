@@ -5,11 +5,15 @@ import sys
 import json
 
 binary_path = sys.argv[1]
+manifest_dir = sys.argv[2]
 
-template = os.path.join(os.path.dirname(__file__),
-                        'net.diegoveralli.tabreport.json')
+MANIFEST_NAME = 'net.diegoveralli.tabreport.json'
+
+template = os.path.join(os.path.dirname(__file__), MANIFEST_NAME)
 
 with open(template, 'r', encoding='utf-8') as f:
     values = json.load(f)
     values['path'] = binary_path
-    print(json.dumps(values, indent=2))
+    destination = os.path.join(os.path.realpath(manifest_dir), MANIFEST_NAME)
+    with open(destination, 'w', encoding='utf-8') as out:
+        json.dump(values, out, indent=2)
