@@ -14,6 +14,7 @@ with open('manifest.json', 'r', encoding='utf-8') as f:
 
 version="$(manifest-attribute version)"
 
+npm rebuild
 npm install
 
 PATH="$THIS_SCRIPT_DIR"/node_modules/.bin/:"$PATH"

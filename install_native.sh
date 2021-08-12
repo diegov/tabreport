@@ -21,6 +21,9 @@ function install-binary {
 
 set -e
 
+#export RUSTFLAGS="-C debuginfo=0 -C force-unwind-tables=no -C panic=abort -C embed-bitcode=no"
+export RUSTFLAGS="-C debuginfo=0 -C force-unwind-tables=no -C panic=abort"
+
 cargo build -p tabreport_host --release 
 install-binary target/release/tabreport_host tabreport_host
 

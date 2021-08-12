@@ -154,7 +154,7 @@ fn write_to_stdout(body: &str) -> Result<(String,), dbus::MethodErr> {
     stdout
         .write_u32::<NativeEndian>(bytes.len() as u32)
         .expect("Failed to write to stdout");
-    stdout.write_all(&bytes).expect("Failed to write to stdout");
+    stdout.write_all(bytes).expect("Failed to write to stdout");
     stdout.flush().expect("Failed to flush stdout");
     Ok(("done".to_string(),))
 }
@@ -168,7 +168,7 @@ fn get_sorted_list<'a>(
         result.push((ts, (*key, value)));
     }
 
-    result.sort_by(|a, b| b.0.cmp(&a.0));
+    result.sort_by(|a, b| b.0.cmp(a.0));
 
     result.into_iter().map(|v| v.1).collect()
 }
