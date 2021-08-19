@@ -12,11 +12,11 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v2
+    - uses: abbbi/github-actions-tune@0b48641ceb645d4ad4573b0d17b770d85770f9c7
     - run: rustup component add rustfmt
     - run: rustup component add clippy
     - run: sudo apt-get install -y --no-install-recommends libdbus-1-dev jq python3 python3-pip
