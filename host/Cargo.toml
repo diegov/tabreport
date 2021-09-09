@@ -1,6 +1,6 @@
 [package]
 name = "tabreport_host"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Diego Veralli <diegoov@gmail.com>"]
 edition = "2018"
 
