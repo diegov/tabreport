@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "addons-linter": "3.*",
+    "addons-linter": "^4.2.*",
     "canvas": "2.*",
     "two.js": "0.*",
     "web-ext": "6.*"
