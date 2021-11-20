@@ -16,6 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/setup-node@v2
+      with:
+        node-version: '17'
     - uses: abbbi/github-actions-tune@0b48641ceb645d4ad4573b0d17b770d85770f9c7
     - run: rustup component add rustfmt
     - run: rustup component add clippy
@@ -26,3 +29,7 @@ jobs:
       run: ./build.sh check
     - name: Native extension install check
       run: ./install_native.sh
+    - uses: actions/upload-artifact@v2
+      with:
+        name: extension
+        path: extension/tabreport-*.xpi
