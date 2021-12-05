@@ -49,11 +49,24 @@ fn get_list() -> Result<Vec<TabInfo>, Box<dyn std::error::Error>> {
 
     let args: (&str,) = ("dummy",);
 
-    let (tab_list,): (DBusTabInfoList,) =
-        proxy.method_call("net.diegoveralli.tabreport", "TabReport", args)?;
+    let result: Result<(DBusTabInfoList,), dbus::Error> =
+        proxy.method_call("net.diegoveralli.tabreport", "TabReport", args);
 
-    let result = tab_list.iter().map(|v| tuple_to_tab(v)).collect();
-    Ok(result)
+    match result {
+        Ok((tab_list,)) => {
+            let result = tab_list.iter().map(|v| tuple_to_tab(v)).collect();
+            Ok(result)
+        }
+        Err(e) => {
+            if let Some("org.freedesktop.DBus.Error.ServiceUnknown") = e.name() {
+                // This is probably OK, firefox might not be running
+                eprintln!("WARN: DBus service net.diegoveralli.tabreport not found");
+                Ok(vec![])
+            } else {
+                Err(e.into())
+            }
+        }
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
