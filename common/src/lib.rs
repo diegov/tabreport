@@ -44,7 +44,7 @@ impl TabAttributes {
 }
 
 pub fn unpack_tabs(values: &[(TabId, &TabAttributes)]) -> DBusTabInfoList {
-    values.iter().map(|v| tab_to_tuple(v)).collect()
+    values.iter().map(tab_to_tuple).collect()
 }
 
 // TODO: use &TabInfo instead of tuple?
