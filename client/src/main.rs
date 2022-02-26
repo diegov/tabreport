@@ -54,7 +54,7 @@ fn get_list() -> Result<Vec<TabInfo>, Box<dyn std::error::Error>> {
 
     match result {
         Ok((tab_list,)) => {
-            let result = tab_list.iter().map(|v| tuple_to_tab(v)).collect();
+            let result = tab_list.iter().map(tuple_to_tab).collect();
             Ok(result)
         }
         Err(e) => {

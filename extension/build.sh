@@ -20,7 +20,12 @@ npm install
 PATH="$THIS_SCRIPT_DIR"/node_modules/.bin/:"$PATH"
 
 mkdir -p icons
-node make-icon.js
+output_path="$PWD"/icons/tabreport.svg
+
+pushd ../assets || exit 1
+npm install
+node make-icon.js "$output_path"
+popd || exit 1
 
 build_opts=(-i make-icon.js build.sh package.json package-lock.json icons/video.sh)
 

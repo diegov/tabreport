@@ -50,6 +50,9 @@ rect.noStroke();
 two.render();
 
 var settings = { };
-fs.writeFileSync(path.resolve(__dirname, './icons/tabreport.svg'), canvas.toBuffer('image/svg+xml', settings));
+
+var outputPath = process.argv[2];
+
+fs.writeFileSync(path.resolve(outputPath), canvas.toBuffer('image/svg+xml', settings));
 
 process.exit();

@@ -24,12 +24,12 @@ function check_versions_match {
 }
 
 if [ "$1" == "check" ]; then
+    check_versions_match
+
     cargo clean
     cargo clippy -- -D warnings
     cargo fmt -- --check
     cargo check
-
-    check_versions_match
 fi
 
 cargo build --release
