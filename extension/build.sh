@@ -35,4 +35,7 @@ web-ext build --overwrite-dest "${build_opts[@]}"
 name="$(manifest-attribute name)"
 
 outputzip=web-ext-artifacts/"${name}-${version}.zip"
-cp "$outputzip" ./"${name}-${version}.xpi"
+xpi_name="${name}-${version}.xpi"
+cp "$outputzip" ./"$xpi_name"
+echo "$PWD"/"$xpi_name" > artifact.txt
+

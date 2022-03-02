@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 
-BINPATH=~/.local/bin
-NATIVE_MANIFEST_DIR=~/.mozilla/native-messaging-hosts/
+TARGET_HOME="$1"
+
+if [ "$TARGET_HOME" == "" ]; then
+    TARGET_HOME="$HOME"
+fi
+
+BINPATH="$TARGET_HOME"/.local/bin
+NATIVE_MANIFEST_DIR="$TARGET_HOME"/.mozilla/native-messaging-hosts/
 
 echo "Installing binaries to ${BINPATH}"
 echo ""
@@ -15,8 +21,7 @@ function install-binary {
 
 set -e
 
-#export RUSTFLAGS="-C debuginfo=0 -C force-unwind-tables=no -C panic=abort -C embed-bitcode=no"
-export RUSTFLAGS="-C debuginfo=0 -C force-unwind-tables=no -C panic=abort"
+source ./rustflags
 
 cargo build -p tabreport_host --release 
 install-binary target/release/tabreport_host tabreport_host
