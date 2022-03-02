@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   DEBIAN_FRONTEND: noninteractive
+  FF_CACHE_DIR: ~/cache/firefox/
 
 jobs:
   build:
@@ -25,6 +26,14 @@ jobs:
     - run: sudo apt-get install -y --no-install-recommends libdbus-1-dev jq python3 python3-pip
     - run: pip3 install --user 'yq==2.12.*'
     - run: mkdir -p ~/.local/bin/
+    - name: Cache cargo packages
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock', 'rust-toolchain') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
     - name: Build
       run: ./build.sh check
     - name: Native extension install check
@@ -33,3 +42,18 @@ jobs:
       with:
         name: extension
         path: extension/tabreport-*.xpi
+
+    - run: sudo apt-get install -y --no-install-recommends pkg-config python3-venv libgtk-3-0 libxtst6 libdbus-glib-1-2 libx11-xcb1 python3-wheel dbus-x11
+    - name: Cache pip packages
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/cache/virtualenv
+        key: ${{ runner.os }}-pip-${{ hashFiles('integration_tests/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - run: mkdir -p ~/cache/virtualenv
+    - run: ./setup.sh ~/cache/virtualenv
+      working-directory: integration_tests
+    - run: dbus-launch ~/cache/virtualenv/bin/python3 ./run.py 96.0b8 ../extension/*xpi
+      working-directory: integration_tests
