@@ -9,6 +9,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   DEBIAN_FRONTEND: noninteractive
+  # No spaces allowed here, too much work to escape later in shell commands
+  XDG_CACHE_HOME: ~/.cache/
 
 jobs:
   build:
@@ -20,11 +22,22 @@ jobs:
       with:
         node-version: '17'
     - uses: abbbi/github-actions-tune@0b48641ceb645d4ad4573b0d17b770d85770f9c7
+    - name: Cache cargo packages
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/
+          ~/.rustup/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock', 'rust-toolchain') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
     - run: rustup component add rustfmt
     - run: rustup component add clippy
     - run: sudo apt-get install -y --no-install-recommends libdbus-1-dev jq python3 python3-pip
     - run: pip3 install --user 'yq==2.12.*'
     - run: mkdir -p ~/.local/bin/
+    - name: Set Rust flags
+      run: "cat rustflags | sed s/'^export '/''/gi | grep -v '^#' >> $GITHUB_ENV"
     - name: Build
       run: ./build.sh check
     - name: Native extension install check
@@ -33,3 +46,36 @@ jobs:
       with:
         name: extension
         path: extension/tabreport-*.xpi
+
+    - run: sudo apt-get install -y --no-install-recommends pkg-config python3-venv libgtk-3-0 libxtst6 libdbus-glib-1-2 libx11-xcb1 python3-wheel dbus-x11
+    - name: Cache pip packages
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ env.XDG_CACHE_HOME }}/virtualenv
+        key: ${{ runner.os }}-pip-${{ hashFiles('integration_tests/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - run: "mkdir -p ${{ env.XDG_CACHE_HOME }}/virtualenv"
+    - run: "./setup.sh ${{ env.XDG_CACHE_HOME }}/virtualenv"
+      working-directory: integration_tests
+    - name: Cache firefox versions
+      uses: actions/cache@v2
+      # I don't want to do a matrix build and take the artifacts from the previous
+      # job, this is easy enough.
+      with:
+        path: |
+          ${{ env.XDG_CACHE_HOME }}/extension_testing
+        key: ${{ runner.os }}-ff-86.0b9-98.0b9-
+        restore-keys: |
+          ${{ runner.os }}-ff-
+    - run: dbus-launch ${{ env.XDG_CACHE_HOME }}/virtualenv/bin/python3 ./tabreport_tests.py 86.0b9 ../extension/*xpi
+      working-directory: integration_tests
+    - run: dbus-launch ${{ env.XDG_CACHE_HOME }}/virtualenv/bin/python3 ./tabreport_tests.py 98.0b9 ../extension/*xpi
+      working-directory: integration_tests
+    - name: Collect gecko log
+      uses: actions/upload-artifact@v2
+      if: ${{ always() }}
+      with:
+        name: gecko.log
+        path: integration_tests/gecko.log

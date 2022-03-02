@@ -1,3 +1,7 @@
 .packages_py_info
 target/
 *.xpi
+integration_tests/venv/
+__pycache__/
+gecko.log
+

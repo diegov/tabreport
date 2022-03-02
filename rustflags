@@ -1,0 +1,2 @@
+#export RUSTFLAGS="-C debuginfo=0 -C force-unwind-tables=no -C panic=abort -C embed-bitcode=no"
+export RUSTFLAGS="-C debuginfo=0 -C force-unwind-tables=no -C panic=abort"

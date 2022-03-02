@@ -1,0 +1,5 @@
+marionette-driver==3.1.0
+requests==2.27.1
+types-requests==2.27.1
+mozprofile==2.5.0
+PyHamcrest==2.0.3

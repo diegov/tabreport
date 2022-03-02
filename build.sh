@@ -4,10 +4,10 @@ set -e
 
 function check_versions_match {
     local versions=()
-    while read l; do
+    while read -r l; do
         version=$(tomlq -r .package.version "$l")
         versions=("${versions[@]}" "$l":"$version")
-    done < <(find -mindepth 2 -maxdepth 2 -type f -name Cargo.toml | sort)
+    done < <(find . -mindepth 2 -maxdepth 2 -type f -name Cargo.toml | sort)
 
     manifest=extension/manifest.json
     js_version=$(jq -r .version "$manifest")
@@ -23,6 +23,8 @@ function check_versions_match {
     fi
 }
 
+source ./rustflags
+
 if [ "$1" == "check" ]; then
     check_versions_match
 
@@ -36,4 +38,21 @@ cargo build --release
 
 pushd extension
 ./build.sh
+xpi_file="$(cat artifact.txt)"
 popd
+
+declare TMP_HOME
+
+function cleanup {
+    if [ -d "$TMP_HOME" ]; then
+        rm -rf "$TMP_HOME"
+    fi
+}
+
+trap cleanup ERR EXIT
+
+if [ "$1" == "integration" ]; then
+    pushd integration_tests || exit 1
+    ./run_tests.sh "$xpi_file"
+    popd || exit 1
+fi
