@@ -36,8 +36,8 @@ jobs:
     - run: sudo apt-get install -y --no-install-recommends libdbus-1-dev jq python3 python3-pip
     - run: pip3 install --user 'yq==2.12.*'
     - run: mkdir -p ~/.local/bin/
-    - name: Set Rust flags
-      run: "cat rustflags | sed s/'^export '/''/gi | grep -v '^#' >> $GITHUB_ENV"
+    # - name: Set Rust flags
+    #   run: "cat rustflags | sed s/'^export '/''/gi | grep -v '^#' >> $GITHUB_ENV"
     - name: Build
       run: ./build.sh check
     - name: Native extension install check
