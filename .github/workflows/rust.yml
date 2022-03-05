@@ -69,8 +69,8 @@ jobs:
         key: ${{ runner.os }}-ff-86.0b9-98.0b9-
         restore-keys: |
           ${{ runner.os }}-ff-
-    - run: dbus-launch ${{ env.XDG_CACHE_HOME }}/virtualenv/bin/python3 ./tabreport_tests.py 86.0b9 ../extension/*xpi 2>>test.log
-      working-directory: integration_tests
+    # - run: dbus-launch ${{ env.XDG_CACHE_HOME }}/virtualenv/bin/python3 ./tabreport_tests.py 86.0b9 ../extension/*xpi 2>>test.log
+    #   working-directory: integration_tests
     - run: dbus-launch ${{ env.XDG_CACHE_HOME }}/virtualenv/bin/python3 ./tabreport_tests.py 98.0b9 ../extension/*xpi 2>>test.log
       working-directory: integration_tests
     - name: Collect gecko log
