@@ -29,10 +29,13 @@ EXTENSION_PATH = os.path.realpath(sys.argv[2])
 sys.argv = sys.argv[2:]
 
 
+MARIONETTE = get_marionette(FF_VERSION, EXTENSION_PATH)
+
+
 class IntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = get_marionette(FF_VERSION, EXTENSION_PATH)
+        cls.client = MARIONETTE
 
     @classmethod
     def tearDownClass(cls):
