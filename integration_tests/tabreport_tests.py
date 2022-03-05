@@ -29,13 +29,15 @@ EXTENSION_PATH = os.path.realpath(sys.argv[2])
 sys.argv = sys.argv[2:]
 
 
-MARIONETTE = get_marionette(FF_VERSION, EXTENSION_PATH)
+print(f"Running tests for extension {EXTENSION_PATH} using Firefox {FF_VERSION}")
+if not os.path.isfile(EXTENSION_PATH):
+    raise FileNotFoundError(EXTENSION_PATH)
 
 
 class IntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = MARIONETTE
+        cls.client = get_marionette(FF_VERSION, EXTENSION_PATH)
 
     @classmethod
     def tearDownClass(cls):

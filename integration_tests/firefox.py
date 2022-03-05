@@ -37,8 +37,7 @@ def get_marionette(ff_version: str, extension_path: str) -> Marionette:
 
     ff_path = os.path.join(install_dir, "firefox", "firefox")
 
-    client = Marionette(host="localhost", bin=ff_path, headless=True,
-                        port=17134)
+    client = Marionette(bin=ff_path, headless=True, port=12828)
     try:
         client.start_session()
         client.set_pref("xpinstall.signatures.required", False)
@@ -47,6 +46,7 @@ def get_marionette(ff_version: str, extension_path: str) -> Marionette:
         addons.install(extension_path)
     except Exception:
         client.cleanup()
+        client.instance = None
         raise
 
     return client
