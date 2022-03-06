@@ -30,7 +30,7 @@ jobs:
           ~/.rustup/
         key: ${{ runner.os }}-cargo2-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock', 'rust-toolchain') }}
         restore-keys: |
-          ${{ runner.os }}-cargo-
+          ${{ runner.os }}-cargo2-
     - run: rustup component add rustfmt
     - run: rustup component add clippy
     - run: sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 jq libasound2 libdbus-1-dev libdbus-glib-1-2 libgtk-3-0 libx11-xcb1 libxt6 libxtst6 pkg-config python3 python3-pip python3-venv python3-wheel
@@ -56,10 +56,7 @@ jobs:
           ${{ env.XDG_CACHE_HOME }}/virtualenv
         key: ${{ runner.os }}-pip2-${{ hashFiles('integration_tests/requirements.txt') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
-    - run: "mkdir -p ${{ env.XDG_CACHE_HOME }}/virtualenv"
-    - run: "./setup.sh ${{ env.XDG_CACHE_HOME }}/virtualenv"
-      working-directory: integration_tests
+          ${{ runner.os }}-pip2-
     - name: Cache firefox versions
       uses: actions/cache@v2
       with:
@@ -67,7 +64,7 @@ jobs:
           ${{ env.XDG_CACHE_HOME }}/extension_testing
         key: ${{ runner.os }}-ff2-${{ hashFiles('integration_tests/firefox_versions', 'integration_tests/firefox.py') }}
         restore-keys: |
-          ${{ runner.os }}-ff-
+          ${{ runner.os }}-ff2-
     - run: ./run_tests.sh "$XPI_FILE" 2>>test.log
       working-directory: integration_tests
       env:
