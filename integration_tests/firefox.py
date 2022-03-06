@@ -42,8 +42,8 @@ def get_marionette(ff_version: str, extension_path: str) -> Marionette:
         client.start_session()
         client.set_pref("xpinstall.signatures.required", False)
 
-        # addons = Addons(client)
-        # addons.install(extension_path)
+        addons = Addons(client)
+        addons.install(extension_path)
     except Exception:
         client.cleanup()
         client.instance = None

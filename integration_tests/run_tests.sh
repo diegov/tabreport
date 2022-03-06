@@ -11,14 +11,26 @@ mkdir -p "$TMP_HOME"/.local/bin/
 
 pushd .. || exit 1
 ./install_native.sh "$TMP_HOME"
-
 popd || exit 1
 
-export XDG_CACHE_HOME="$HOME"/.cache/
+if [ "$XDG_CACHE_HOME" == "" ]; then
+    export XDG_CACHE_HOME="$HOME"/.cache/
+fi
+
+if [ "$VIRTUALENV_DIR" == "" ]; then
+    VIRTUALENV_DIR="$PWD"/venv
+fi
+
 export HOME="$TMP_HOME"
 
-./setup.sh venv
+./setup.sh "$VIRTUALENV_DIR"
 
 export PATH="$TMP_HOME"/.local/bin:"$PATH"
-dbus-launch venv/bin/python3 tabreport_tests.py 86.0b9 "$xpi_file"
-dbus-launch venv/bin/python3 tabreport_tests.py 98.0b9 "$xpi_file"
+
+while read -r ff_version; do
+    if [ "$ff_version" != "" ]; then
+        echo "Running integration tests with Firefox $ff_version" >&2
+        echo "" >&2
+        dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file"
+    fi
+done < firefox_versions

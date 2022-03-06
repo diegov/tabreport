@@ -62,19 +62,17 @@ jobs:
       working-directory: integration_tests
     - name: Cache firefox versions
       uses: actions/cache@v2
-      # I don't want to do a matrix build and take the artifacts from the previous
-      # job, this is easy enough.
       with:
         path: |
           ${{ env.XDG_CACHE_HOME }}/extension_testing
-        key: ${{ runner.os }}-ff-86.0b9-98.0b9-
+        key: ${{ runner.os }}-ff-${{ hashFiles('integration_tests/firefox_versions', 'integration_tests/firefox.py') }}
         restore-keys: |
           ${{ runner.os }}-ff-
-    - run: dbus-launch ${{ env.XDG_CACHE_HOME }}/virtualenv/bin/python3 ./tabreport_tests.py 86.0b9 "$XPI_FILE" 2>>test.log
+    - run: ./run_tests.sh "$XPI_FILE" 2>>test.log
       working-directory: integration_tests
-    - run: dbus-launch ${{ env.XDG_CACHE_HOME }}/virtualenv/bin/python3 ./tabreport_tests.py 98.0b9 "$XPI_FILE" 2>>test.log
-      working-directory: integration_tests
-    - name: Collect gecko log
+      env:
+        VIRTUALENV_DIR: ${{ env.XDG_CACHE_HOME }}/virtualenv
+    - name: Collect test logs
       uses: actions/upload-artifact@v2
       if: ${{ always() }}
       with:
