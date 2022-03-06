@@ -28,7 +28,7 @@ jobs:
         path: |
           ~/.cargo/
           ~/.rustup/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock', 'rust-toolchain') }}
+        key: ${{ runner.os }}-cargo2-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock', 'rust-toolchain') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
     - run: rustup component add rustfmt
@@ -54,7 +54,7 @@ jobs:
       with:
         path: |
           ${{ env.XDG_CACHE_HOME }}/virtualenv
-        key: ${{ runner.os }}-pip-${{ hashFiles('integration_tests/requirements.txt') }}
+        key: ${{ runner.os }}-pip2-${{ hashFiles('integration_tests/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
     - run: "mkdir -p ${{ env.XDG_CACHE_HOME }}/virtualenv"
@@ -65,7 +65,7 @@ jobs:
       with:
         path: |
           ${{ env.XDG_CACHE_HOME }}/extension_testing
-        key: ${{ runner.os }}-ff-${{ hashFiles('integration_tests/firefox_versions', 'integration_tests/firefox.py') }}
+        key: ${{ runner.os }}-ff2-${{ hashFiles('integration_tests/firefox_versions', 'integration_tests/firefox.py') }}
         restore-keys: |
           ${{ runner.os }}-ff-
     - run: ./run_tests.sh "$XPI_FILE" 2>>test.log
