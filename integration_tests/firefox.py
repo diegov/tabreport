@@ -37,7 +37,7 @@ def get_marionette(ff_version: str, extension_path: str) -> Marionette:
 
     ff_path = os.path.join(install_dir, "firefox", "firefox")
 
-    client = Marionette(bin=ff_path, headless=True, port=12828)
+    client = Marionette(host="localhost", port=12828, bin=ff_path, headless=True)
     try:
         client.start_session()
         client.set_pref("xpinstall.signatures.required", False)
