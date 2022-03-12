@@ -3,7 +3,7 @@
   "description": "Reports tab events to a native host",
   "manifest_version": 2,
   "name": "TabReport",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "icons": {
     "48": "icons/tabreport.svg"
   },
@@ -11,7 +11,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "tabreport@diegoveralli.net",
-      "strict_min_version": "80.0"
+      "strict_min_version": "86.0"
     }
   },
 
