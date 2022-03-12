@@ -15,6 +15,7 @@ SERVER_ADDRESS = "127.0.1.1"
 def run_server(directory: str, address: str, port: int, stop_event: Event) -> None:
     handler_class = partial(SimpleHTTPRequestHandler, directory=directory)
     with ThreadingHTTPServer((address, port), handler_class) as httpd:
+
         def shutdown():
             stop_event.wait()
             httpd.shutdown()

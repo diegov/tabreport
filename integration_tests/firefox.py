@@ -14,7 +14,7 @@ else:
 
 cache_dir = os.path.join(cache_home, "extension_testing")
 
-print(f'Download cache directory set to {cache_dir}')
+print(f"Download cache directory set to {cache_dir}")
 
 
 def get_marionette(ff_version: str, extension_path: str) -> Marionette:
@@ -30,8 +30,8 @@ def get_marionette(ff_version: str, extension_path: str) -> Marionette:
             subprocess.check_output(
                 ["tar", "xf", "firefox.tar.bz2"],
                 cwd=install_dir,
-                encoding='utf-8',
-                stderr=subprocess.STDOUT
+                encoding="utf-8",
+                stderr=subprocess.STDOUT,
             )
         )
 

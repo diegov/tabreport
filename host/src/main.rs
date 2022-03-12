@@ -6,54 +6,72 @@ use dbus::blocking::Connection;
 use dbus::channel::MatchingReceiver;
 use dbus_crossroads::{Context, Crossroads};
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::ErrorKind;
 use std::io::Write;
 use std::io::{self, Cursor, Read};
 use std::str;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
-use std::time::Duration;
 use std::time::SystemTime;
-use tabreport_common::{empty_to_none, none_to_empty_string};
+use std::time::{Duration, Instant};
+use tabreport_common::empty_to_none;
 use tabreport_common::{unpack_tabs, TabAttributes, TabEvent, TabId, WindowId};
 
 type TabData = HashMap<TabId, (SystemTime, TabAttributes)>;
 
-type SignalData = (Mutex<HashSet<String>>, Condvar);
+type SignalData = (Mutex<HashMap<u64, Option<String>>>, Condvar);
 
-type TabReportContext = (Arc<Mutex<TabData>>, Arc<SignalData>);
+type TabReportContext = (Arc<Mutex<TabData>>, Arc<SignalData>, Arc<AtomicU64>);
 
 trait KeySignal {
-    fn sync_complete(&self, key: &str);
-    fn wait_for_sync(&self, key: &Option<String>);
+    fn sync_complete(&self, sequence_number: u64, error: Option<String>);
+    fn wait_for_sync(&self, sequence_number: u64) -> Result<(), dbus::MethodErr>;
 }
 
 impl KeySignal for SignalData {
-    fn sync_complete(&self, key: &str) {
+    fn sync_complete(&self, sequence_number: u64, error: Option<String>) {
         let (lock, cvar) = &*self;
         let mut started = lock.lock().unwrap();
-        started.insert(key.to_string());
+        started.insert(sequence_number, error);
         cvar.notify_all();
     }
 
-    fn wait_for_sync(&self, key: &Option<String>) {
-        if let Some(value) = key.as_ref() {
-            let (lock, cvar) = &*self;
-            let mut started = lock.lock().unwrap();
+    fn wait_for_sync(&self, sequence_number: u64) -> Result<(), dbus::MethodErr> {
+        let (lock, cvar) = &*self;
+        let mut started = lock.lock().map_err(|e| dbus::MethodErr::failed(&e))?;
 
-            log(format!("Waiting for {:?}", key));
+        log(format!("Waiting for {:?}", &sequence_number));
 
-            while !started.contains(value) {
-                let new_value = cvar.wait_timeout(started, Duration::from_secs(3)).unwrap();
-                started = new_value.0;
+        let start = Instant::now();
+
+        while !started.contains_key(&sequence_number) {
+            // TODO: dbus::blocking is showing its limitations here, the service
+            // won't respond to other queries while this is waiting, which is
+            // very noticeable when there's an error and we don't get a sync
+            // message back. We need to use dbus-tokio.
+            if start.elapsed().as_millis() > 5000 {
+                return Err(dbus::MethodErr::failed(
+                    "More than 5 seconds without response from Firefox extension",
+                ));
             }
-            started.remove(value);
-
-            log(format!("Synchronized {:?}", key));
+            let new_value = cvar
+                .wait_timeout(started, Duration::from_secs(3))
+                .map_err(|e| dbus::MethodErr::failed(&e))?;
+            started = new_value.0;
         }
+
+        let error = started.remove(&sequence_number);
+
+        log(format!("Synchronized {:?}", &sequence_number));
+
+        if let Some(Some(error)) = error {
+            return Err(dbus::MethodErr::failed(&error));
+        }
+
+        Ok(())
     }
 }
 
@@ -63,6 +81,12 @@ struct Command {
     tab_id: TabId,
     window_id: Option<WindowId>,
     window_title_preface: Option<String>,
+    sequence_number: u64,
+}
+
+fn get_sequence_number(source: &Arc<AtomicU64>) -> u64 {
+    // % for the max integer we can use in JS with full precision.
+    source.fetch_add(1, Ordering::SeqCst) % 999999999999999u64
 }
 
 fn serve(do_run: Arc<AtomicBool>, data: TabReportContext) -> Result<(), Box<dyn Error>> {
@@ -76,7 +100,7 @@ fn serve(do_run: Arc<AtomicBool>, data: TabReportContext) -> Result<(), Box<dyn 
             "TabReport",
             (),
             ("reply",),
-            |_ctx: &mut Context, (tab_data, _): &mut TabReportContext, (): ()| {
+            |_ctx: &mut Context, (tab_data, _, _): &mut TabReportContext, (): ()| {
                 let current = tab_data.lock().unwrap();
                 let result = get_sorted_list(&current);
                 Ok((unpack_tabs(&result),))
@@ -87,21 +111,27 @@ fn serve(do_run: Arc<AtomicBool>, data: TabReportContext) -> Result<(), Box<dyn 
             "Activate",
             ("tab_id", "window_title_preface"),
             ("reply",),
-            |_ctx: &mut Context,
-             (_, signal_data): &mut TabReportContext,
-             (tab_id, title_preface): (TabId, String)| {
+            move |_ctx: &mut Context,
+                  (_, signal_data, seq_nums): &mut TabReportContext,
+                  (tab_id, title_preface): (TabId, String)| {
                 let preface = empty_to_none(title_preface);
+
+                let sequence_number = get_sequence_number(seq_nums);
+
                 let command = Command {
                     action: "activate".to_string(),
                     tab_id,
                     window_id: None::<WindowId>,
-                    window_title_preface: preface.clone(),
+                    window_title_preface: preface,
+                    sequence_number,
                 };
 
-                let body = serde_json::to_string(&command).expect("Failed to serialize command");
+                let body =
+                    serde_json::to_string(&command).map_err(|e| dbus::MethodErr::failed(&e))?;
+
                 let reply = write_to_stdout(&body)?;
 
-                signal_data.wait_for_sync(&preface);
+                signal_data.wait_for_sync(sequence_number)?;
 
                 Ok(reply)
             },
@@ -111,16 +141,27 @@ fn serve(do_run: Arc<AtomicBool>, data: TabReportContext) -> Result<(), Box<dyn 
             "Reset",
             ("tab_id",),
             ("reply",),
-            |_ctx: &mut Context, _data: &mut TabReportContext, (tab_id,): (TabId,)| {
+            |_ctx: &mut Context,
+             (_, signal_data, seq_nums): &mut TabReportContext,
+             (tab_id,): (TabId,)| {
+                let sequence_number = get_sequence_number(seq_nums);
+
                 let command = Command {
                     action: "reset".to_string(),
                     tab_id,
                     window_id: None::<WindowId>,
                     window_title_preface: None::<String>,
+                    sequence_number,
                 };
 
-                let body = serde_json::to_string(&command).expect("Failed to serialize command");
-                write_to_stdout(&body)
+                let body =
+                    serde_json::to_string(&command).map_err(|e| dbus::MethodErr::failed(&e))?;
+
+                let reply = write_to_stdout(&body)?;
+
+                signal_data.wait_for_sync(sequence_number)?;
+
+                Ok(reply)
             },
         );
     });
@@ -130,7 +171,10 @@ fn serve(do_run: Arc<AtomicBool>, data: TabReportContext) -> Result<(), Box<dyn 
     let id = c.start_receive(
         dbus::message::MatchRule::new_method_call(),
         Box::new(move |msg, conn| {
-            cr.handle_message(msg, conn).unwrap();
+            match cr.handle_message(msg, conn) {
+                Ok(()) => (),
+                Err(()) => log("Failed to handle DBus message"),
+            }
             true
         }),
     );
@@ -153,9 +197,14 @@ fn write_to_stdout(body: &str) -> Result<(String,), dbus::MethodErr> {
     let mut stdout = io::stdout();
     stdout
         .write_u32::<NativeEndian>(bytes.len() as u32)
-        .expect("Failed to write to stdout");
-    stdout.write_all(bytes).expect("Failed to write to stdout");
-    stdout.flush().expect("Failed to flush stdout");
+        .map_err(|e| dbus::MethodErr::failed(&e))?;
+
+    stdout
+        .write_all(bytes)
+        .map_err(|e| dbus::MethodErr::failed(&e))?;
+
+    stdout.flush().map_err(|e| dbus::MethodErr::failed(&e))?;
+
     Ok(("done".to_string(),))
 }
 
@@ -206,13 +255,20 @@ fn main() -> io::Result<()> {
     let tab_data = Arc::new(Mutex::new(TabData::new()));
     let server_tab_data = Arc::clone(&tab_data);
 
-    let signal_data = Arc::new((Mutex::new(HashSet::new()), Condvar::new()));
+    let signal_data = Arc::new((Mutex::new(HashMap::new()), Condvar::new()));
     let server_signal_data = Arc::clone(&signal_data);
 
     let server_do_run = do_run.clone();
     let dbus_thread = thread::spawn(|| {
-        serve(server_do_run, (server_tab_data, server_signal_data))
-            .expect("Error running dbus service");
+        serve(
+            server_do_run,
+            (
+                server_tab_data,
+                server_signal_data,
+                Arc::new(AtomicU64::new(0)),
+            ),
+        )
+        .expect("Error running dbus service");
     });
 
     let mut stdin = io::stdin();
@@ -236,8 +292,8 @@ fn main() -> io::Result<()> {
                 log(format!("No entry with id {} found", &event.tab_info.tab_id));
             }
         } else if event.action == "sync" {
-            log(format!("Received sync for {:?}", event.key));
-            signal_data.sync_complete(&none_to_empty_string(event.key));
+            log(format!("Received sync for {:?}", event.sequence_number));
+            signal_data.sync_complete(event.sequence_number.unwrap_or(0u64), event.error);
         } else {
             let mut data = tab_data.lock().unwrap();
             let mut attributes = event.tab_info.attributes;
@@ -265,8 +321,7 @@ fn read_tab_info(stdin: &mut io::Stdin) -> io::Result<TabEvent> {
 
     let mut reader = Cursor::new(prefix);
 
-    // TODO: Fix error types and replace unwrap with ?
-    let msg_len = reader.read_u32::<NativeEndian>().unwrap();
+    let msg_len = reader.read_u32::<NativeEndian>()?;
 
     // log(format!("Decoded message length: {}", msg_len));
 
@@ -274,7 +329,7 @@ fn read_tab_info(stdin: &mut io::Stdin) -> io::Result<TabEvent> {
     stdin.read_exact(&mut data)?;
 
     // log("Read the data, decoding utf-8..");
-    let msg_str = str::from_utf8(&data).unwrap();
+    let msg_str = str::from_utf8(&data).map_err(|e| io::Error::new(ErrorKind::InvalidInput, e))?;
 
     log(msg_str);
 
