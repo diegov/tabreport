@@ -1,10 +1,17 @@
 import os
+import sys
+import json
 import subprocess
 import requests
-
+from packaging import version
+from packaging.version import Version
+from typing import List, Tuple
 
 from marionette_driver.marionette import Marionette
 from marionette_driver.addons import Addons
+
+
+FF_RELEASES_BASE_URL = "https://ftp.mozilla.org/pub/devedition/releases"
 
 
 if "XDG_CACHE_HOME" in os.environ:
@@ -14,16 +21,47 @@ else:
 
 cache_dir = os.path.join(cache_home, "extension_testing")
 
-print(f"Download cache directory set to {cache_dir}")
+print(f"Download cache directory set to {cache_dir}", file=sys.stderr)
+
+
+def get_latest_available_version() -> str:
+    r = requests.get(
+        f"{FF_RELEASES_BASE_URL}/",
+        headers={"Accept": "application/json"},
+        allow_redirects=True,
+    )
+    r.raise_for_status()
+    version_data = json.loads(r.content)
+
+    versions: List[Tuple[Version, str]] = []
+    for dir_name in version_data['prefixes']:
+        version_string = dir_name.rstrip('/')
+        v = version.parse(version_string)
+        # "Bad" versions get parsed into `LegacyVersion` objects
+        if isinstance(v, Version):
+            versions.append((v, version_string))
+
+    versions = sorted(versions)
+    latest = versions[-1]
+
+    # We know this version exists, make sure we found something
+    # equal or newer than this.
+    sanity_check = version.parse('99.0b2')
+
+    assert latest[0] >= sanity_check, "Latest version sanity check. " + \
+        f"Expected >= {sanity_check}, actual {latest[0]}."
+
+    return latest[1]
 
 
 def get_marionette(ff_version: str, extension_path: str) -> Marionette:
     install_dir = os.path.join(cache_dir, f"ff-{ff_version}")
 
     if not os.path.exists(install_dir):
-        url = f"https://ftp.mozilla.org/pub/devedition/releases/{ff_version}/linux-x86_64/en-GB/firefox-{ff_version}.tar.bz2"
+        url = f"{FF_RELEASES_BASE_URL}/{ff_version}/linux-x86_64/en-GB/firefox-{ff_version}.tar.bz2"
         os.makedirs(install_dir)
         r = requests.get(url, allow_redirects=True)
+        r.raise_for_status()
         with open(os.path.join(install_dir, "firefox.tar.bz2"), "wb") as f:
             f.write(r.content)
         print(
@@ -32,7 +70,8 @@ def get_marionette(ff_version: str, extension_path: str) -> Marionette:
                 cwd=install_dir,
                 encoding="utf-8",
                 stderr=subprocess.STDOUT,
-            )
+            ),
+            file=sys.stderr,
         )
 
     ff_path = os.path.join(install_dir, "firefox", "firefox")

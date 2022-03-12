@@ -53,6 +53,10 @@ trap cleanup ERR EXIT
 
 if [ "$1" == "integration" ]; then
     pushd integration_tests || exit 1
-    ./run_tests.sh "$xpi_file"
+    if [ "$2" == "latest" ]; then
+        ./run_tests.sh -l "$xpi_file"
+    else
+        ./run_tests.sh "$xpi_file"
+    fi
     popd || exit 1
 fi
