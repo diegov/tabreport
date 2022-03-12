@@ -4,18 +4,24 @@ set -e
 set -o pipefail
 
 function usage() {
-    echo "Usage: $0 [-f <remote>] <xpi_file>" 1>&2
+    echo "Usage: $0 [-f <remote>] [-l] <xpi_file>" 1>&2
     echo "    xpi_file    path of the XPI extension to test" 1>&2
     echo "    -f          Fetch tag from specified remote for backwards compatibility tests" 1>&2
+    echo "    -l          Test against latest available FF version. If not provided, the versions" 1>&2
+    echo "                are read from the firefox_versions file." 1>&2
     exit "$1"
 }
 
 FETCH_REMOTE=
+FF_USE_LATEST=no
 
-while getopts "f:h" o; do
+while getopts "f:lh" o; do
     case "${o}" in
         f)
             FETCH_REMOTE=${OPTARG}
+            ;;
+        l)
+            FF_USE_LATEST=yes
             ;;
         h)
             usage 0
@@ -64,6 +70,19 @@ if [ "$VIRTUALENV_DIR" == "" ]; then
     VIRTUALENV_DIR="$PWD"/venv
 fi
 
+FF_VERSION=
+if [ "$FF_USE_LATEST" == yes ]; then
+    FF_VERSION=$("$VIRTUALENV_DIR"/bin/python3 -c 'import firefox; print(firefox.get_latest_available_version())')
+fi
+
+function get-ff-versions {
+    if [ "$FF_VERSION" != "" ]; then
+        echo "$FF_VERSION"
+    else
+        grep '..*' firefox_versions
+    fi
+}
+
 export HOME="$TMP_HOME"
 
 ./setup.sh "$VIRTUALENV_DIR"
@@ -74,7 +93,7 @@ while read -r ff_version; do
     echo "Running integration tests with Firefox $ff_version" >&2
     echo "" >&2
     dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file"
-done < <(grep '..*' firefox_versions)
+done < <(get-ff-versions)
 
 # Backwards compatibility test, since extensions are likely updated automatically
 # whereas the native host is updated manually
@@ -102,4 +121,4 @@ while read -r ff_version; do
         HOST_TARGET_VERSION="$HOST_TARGET_VERSION" dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file"
     fi
     # Execute against latest FF version only
-done < <(grep '..*' firefox_versions | tail -n 1)
+done < <(get-ff-versions | tail -n 1)

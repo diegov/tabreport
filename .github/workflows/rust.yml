@@ -5,6 +5,8 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  schedule:
+    - cron: "*/30 * * * *"
 
 env:
   CARGO_TERM_COLOR: always
@@ -61,6 +63,11 @@ jobs:
           ${{ runner.os }}-pip2-
     - name: Cache firefox versions
       uses: actions/cache@v2
+      # TODO: restoring the cache still makes sense since the latest version might 
+      # match one we test in the CI build, but we should ensure there is no full 
+      # key match so that the existing cache is not overwritten. We could include
+      # the current timestamp in the key.
+      if: github.event_name != 'schedule'
       with:
         path: |
           ${{ env.XDG_CACHE_HOME }}/extension_testing
@@ -68,7 +75,16 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-ff2-
     - name: Run integration tests
+      if: github.event_name != 'schedule'
+      # CI run, test against the versions we specify in the firefox_versions file
       run: ./run_tests.sh -f origin "$XPI_FILE" 2>>test.log
+      working-directory: integration_tests
+      env:
+        VIRTUALENV_DIR: ${{ env.XDG_CACHE_HOME }}/virtualenv
+    - name: Run integration tests against latest FF version
+      if: github.event_name == 'schedule'
+      # Scheduled job, test against the latest FF developer edition (the `-l` option)
+      run: ./run_tests.sh -l -f origin "$XPI_FILE" 2>>test.log
       working-directory: integration_tests
       env:
         VIRTUALENV_DIR: ${{ env.XDG_CACHE_HOME }}/virtualenv
