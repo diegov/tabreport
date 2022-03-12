@@ -3,10 +3,53 @@
 set -e
 set -o pipefail
 
-xpi_file="$1"
+function usage() {
+    echo "Usage: $0 [-f <remote>] <xpi_file>" 1>&2
+    echo "    xpi_file    path of the XPI extension to test" 1>&2
+    echo "    -f          Fetch tag from specified remote for backwards compatibility tests" 1>&2
+    exit "$1"
+}
 
-# TODO: Cleanup
+FETCH_REMOTE=
+
+while getopts "f:h" o; do
+    case "${o}" in
+        f)
+            FETCH_REMOTE=${OPTARG}
+            ;;
+        h)
+            usage 0
+            ;;
+        *)
+            usage 1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+xpi_file=$1
+
+if [ "$xpi_file" == "" ]; then
+    usage 1
+fi
+
+START_DIR="$PWD"
+
+declare TMP_HOME
+function cleanup() {
+    echo "Cleanup temporary files" >&2
+    if [ -d "$TMP_HOME" ]; then
+        rm -rf "$TMP_HOME"
+    fi
+
+    pushd "$START_DIR" && git worktree prune    
+}
+
+trap cleanup ERR EXIT
+
 TMP_HOME=$(mktemp -d)
+ORIGINAL_HOME="$HOME"
+
 mkdir -p "$TMP_HOME"/.local/bin/
 
 pushd .. || exit 1
@@ -28,9 +71,35 @@ export HOME="$TMP_HOME"
 export PATH="$TMP_HOME"/.local/bin:"$PATH"
 
 while read -r ff_version; do
+    echo "Running integration tests with Firefox $ff_version" >&2
+    echo "" >&2
+    dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file"
+done < <(grep '..*' firefox_versions)
+
+# Backwards compatibility test, since extensions are likely updated automatically
+# whereas the native host is updated manually
+HOST_TARGET_VERSION=0.1.7
+HOST_TARGET_GIT_TAG=v"$HOST_TARGET_VERSION"
+
+mkdir -p "$TMP_HOME"/oldversion
+
+if [ "$FETCH_REMOTE" != "" ]; then
+    git fetch "$FETCH_REMOTE" 'refs/tags/*:refs/tags/*'
+    git fetch "$FETCH_REMOTE" "$HOST_TARGET_GIT_TAG" --depth 1
+fi
+
+git worktree add "$TMP_HOME"/oldversion
+
+pushd "$TMP_HOME"/oldversion || exit 1
+git checkout "$HOST_TARGET_GIT_TAG"
+HOME="$ORIGINAL_HOME" ./install_native.sh "$TMP_HOME"
+popd || exit 1
+
+while read -r ff_version; do
     if [ "$ff_version" != "" ]; then
-        echo "Running integration tests with Firefox $ff_version" >&2
+        echo "Running integration tests with Firefox $ff_version and native host version ${HOST_TARGET_VERSION}" >&2
         echo "" >&2
-        dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file"
+        HOST_TARGET_VERSION="$HOST_TARGET_VERSION" dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file"
     fi
-done < firefox_versions
+    # Execute against latest FF version only
+done < <(grep '..*' firefox_versions | tail -n 1)

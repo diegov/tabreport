@@ -67,7 +67,8 @@ jobs:
         key: ${{ runner.os }}-ff2-${{ hashFiles('integration_tests/firefox_versions', 'integration_tests/firefox.py') }}
         restore-keys: |
           ${{ runner.os }}-ff2-
-    - run: ./run_tests.sh "$XPI_FILE" 2>>test.log
+    - name: Run integration tests
+      run: ./run_tests.sh -f origin "$XPI_FILE" 2>>test.log
       working-directory: integration_tests
       env:
         VIRTUALENV_DIR: ${{ env.XDG_CACHE_HOME }}/virtualenv

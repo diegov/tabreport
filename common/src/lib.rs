@@ -6,7 +6,8 @@ pub type WindowId = u32;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TabEvent {
     pub action: String,
-    pub key: Option<String>,
+    pub sequence_number: Option<u64>,
+    pub error: Option<String>,
 
     #[serde(flatten)]
     pub tab_info: TabInfo,

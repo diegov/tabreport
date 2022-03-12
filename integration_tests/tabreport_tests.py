@@ -10,7 +10,9 @@ from typing import Dict, Any, List, Optional
 from test_server import MultiHttpServer
 from firefox import get_marionette, close_all_handles
 import unittest
-from hamcrest import assert_that, has_length
+from hamcrest import assert_that, has_length, starts_with
+from packaging import version
+from packaging.version import Version
 
 
 SLEEP_TIME = 0.25
@@ -20,13 +22,20 @@ def get_tabs() -> List[Dict[str, Any]]:
     # TODO: Find a way to sync without sleep
     time.sleep(SLEEP_TIME)
 
-    result = subprocess.check_output("tabreport", encoding='utf-8')
+    result = subprocess.check_output("tabreport", encoding="utf-8")
     return json.loads(result)  # type: ignore
 
 
 FF_VERSION = sys.argv[1]
 EXTENSION_PATH = os.path.realpath(sys.argv[2])
 sys.argv = sys.argv[2:]
+
+
+host_version_string = os.environ.get("HOST_TARGET_VERSION")
+if host_version_string:
+    HOST_TARGET_VERSION = version.parse(host_version_string)
+else:
+    HOST_TARGET_VERSION = None
 
 
 print(f"Running tests for extension {EXTENSION_PATH} using Firefox {FF_VERSION}")
@@ -56,7 +65,7 @@ class IntegrationTests(unittest.TestCase):
         candidate: Optional[Dict[str, Any]] = None
 
         for val in tab_data:
-            if val['url'] == url:
+            if val["url"] == url:
                 if candidate is None:
                     candidate = val
                 else:
@@ -68,9 +77,21 @@ class IntegrationTests(unittest.TestCase):
         assert candidate is not None
         return candidate
 
-    def activate_tab(self, tab_info: Dict[str, Any]) -> None:
-        subprocess.check_output(["tabreport", str(tab_info['tab_id'])],
-                                encoding='utf-8')
+    def activate_tab(
+        self,
+        tab_info: Dict[str, Any],
+        prefix: Optional[str] = None,
+        reset: bool = False,
+    ) -> None:
+        args = ["tabreport", str(tab_info["tab_id"])]
+
+        if prefix is not None:
+            args.extend(["--mark", prefix])
+
+        if reset:
+            args.append("--reset")
+
+        subprocess.check_output(args, encoding="utf-8")
         time.sleep(SLEEP_TIME)
 
         # Activate the chrome window manually, since we have no other way
@@ -89,22 +110,23 @@ class IntegrationTests(unittest.TestCase):
             self.client.switch_to_window(handle)
             # This is only valid if all the URLs are unique, so
             # we've to write all the tests that way
-            if self.client.get_url() == tab_info['url']:
+            if self.client.get_url() == tab_info["url"]:
                 return
 
         self.client.switch_to_window(original_handle)
 
     def test_tabreport_multiple_tabs(self):
-        with MultiHttpServer([('static', 9919, '127.0.121.1'),
-                              ('static', 9919, '127.0.99.1')]):
+        with MultiHttpServer(
+            [("static", 9919, "127.0.121.1"), ("static", 9919, "127.0.99.1")]
+        ):
             self.client.navigate("http://127.0.121.1:9919/one.html")
             page1 = self.client.current_window_handle
 
-            page2 = self.client.open(type='tab')['handle']
+            page2 = self.client.open(type="tab")["handle"]
             self.client.switch_to_window(page2)
             self.client.navigate("http://127.0.99.1:9919/two.html")
 
-            page3 = self.client.open(type='window')['handle']
+            page3 = self.client.open(type="window")["handle"]
             self.client.switch_to_window(page3)
             self.client.navigate("http://127.0.121.1:9919/three.html")
 
@@ -112,17 +134,17 @@ class IntegrationTests(unittest.TestCase):
 
             assert_that(data, has_length(3))
 
-            tab1 = self.get_unique(data, 'http://127.0.121.1:9919/one.html')
-            self.assertEqual(tab1['title'], 'One Site')
+            tab1 = self.get_unique(data, "http://127.0.121.1:9919/one.html")
+            self.assertEqual(tab1["title"], "One Site")
 
-            tab2 = self.get_unique(data, 'http://127.0.99.1:9919/two.html')
-            self.assertEqual(tab2['title'], 'Two Site')
+            tab2 = self.get_unique(data, "http://127.0.99.1:9919/two.html")
+            self.assertEqual(tab2["title"], "Two Site")
 
-            tab3 = self.get_unique(data, 'http://127.0.121.1:9919/three.html')
-            self.assertEqual(tab3['title'], 'Another site')
+            tab3 = self.get_unique(data, "http://127.0.121.1:9919/three.html")
+            self.assertEqual(tab3["title"], "Another site")
 
-            self.assertEqual(tab1['window_id'], tab2['window_id'])
-            self.assertNotEqual(tab1['window_id'], tab3['window_id'])
+            self.assertEqual(tab1["window_id"], tab2["window_id"])
+            self.assertNotEqual(tab1["window_id"], tab3["window_id"])
 
             self.client.switch_to_window(page1)
             self.client.close()
@@ -131,51 +153,56 @@ class IntegrationTests(unittest.TestCase):
 
             assert_that(data, has_length(2))
 
-            tab2 = self.get_unique(data, 'http://127.0.99.1:9919/two.html')
-            self.assertEqual(tab2['title'], 'Two Site')
+            tab2 = self.get_unique(data, "http://127.0.99.1:9919/two.html")
+            self.assertEqual(tab2["title"], "Two Site")
 
-            tab3 = self.get_unique(data, 'http://127.0.121.1:9919/three.html')
-            self.assertEqual(tab3['title'], 'Another site')
+            tab3 = self.get_unique(data, "http://127.0.121.1:9919/three.html")
+            self.assertEqual(tab3["title"], "Another site")
 
             self.client.switch_to_window(page2)
-            self.client.navigate('http://127.0.121.1:9919/one.html')
+            self.client.navigate("http://127.0.121.1:9919/one.html")
 
             data = get_tabs()
 
             assert_that(data, has_length(2))
 
-            tab2 = self.get_unique(data, 'http://127.0.121.1:9919/one.html')
-            self.assertEqual(tab2['title'], 'One Site')
+            tab2 = self.get_unique(data, "http://127.0.121.1:9919/one.html")
+            self.assertEqual(tab2["title"], "One Site")
 
-            tab3 = self.get_unique(data, 'http://127.0.121.1:9919/three.html')
-            assert tab3['title'] == 'Another site'
+            tab3 = self.get_unique(data, "http://127.0.121.1:9919/three.html")
+            assert tab3["title"] == "Another site"
 
             self.client.switch_to_window(page3)
-            self.client.navigate('http://127.0.121.1:9919/one.html')
+            self.client.navigate("http://127.0.121.1:9919/one.html")
 
             data = get_tabs()
 
             assert_that(data, has_length(2))
 
-            self.assertEqual(data[0]['url'], 'http://127.0.121.1:9919/one.html')
-            self.assertEqual(data[0]['title'], 'One Site')
-            self.assertEqual(data[1]['url'], 'http://127.0.121.1:9919/one.html')
-            self.assertEqual(data[1]['title'], 'One Site')
-            self.assertNotEqual(data[0]['window_id'], data[1]['window_id'])
+            self.assertEqual(data[0]["url"], "http://127.0.121.1:9919/one.html")
+            self.assertEqual(data[0]["title"], "One Site")
+            self.assertEqual(data[1]["url"], "http://127.0.121.1:9919/one.html")
+            self.assertEqual(data[1]["title"], "One Site")
+            self.assertNotEqual(data[0]["window_id"], data[1]["window_id"])
 
     def test_close_all_but_one(self):
-        all_urls = ['http://127.0.{}.1:9919/{}'.format(ip, resource)
-                    for ip in range(98, 101)
-                    for resource in ['one.html', 'two.html', 'three.html',
-                                     'four.html']]
+        all_urls = [
+            "http://127.0.{}.1:9919/{}".format(ip, resource)
+            for ip in range(98, 101)
+            for resource in ["one.html", "two.html", "three.html", "four.html"]
+        ]
 
-        with MultiHttpServer([('static', 9919, '127.0.98.1'),
-                              ('static', 9919, '127.0.99.1'),
-                              ('static', 9919, '127.0.100.1')]):
+        with MultiHttpServer(
+            [
+                ("static", 9919, "127.0.98.1"),
+                ("static", 9919, "127.0.99.1"),
+                ("static", 9919, "127.0.100.1"),
+            ]
+        ):
             self.client.navigate(all_urls[0])
 
             for url in all_urls[1:]:
-                new_page = self.client.open(type='tab')['handle']
+                new_page = self.client.open(type="tab")["handle"]
                 self.client.switch_to_window(new_page)
                 self.client.navigate(url)
 
@@ -184,7 +211,7 @@ class IntegrationTests(unittest.TestCase):
             assert_that(data, has_length(len(all_urls)))
 
             # Close all but this
-            to_keep = 'http://127.0.99.1:9919/two.html'
+            to_keep = "http://127.0.99.1:9919/two.html"
             handles = list(self.client.window_handles)
             for handle in handles:
                 self.client.switch_to_window(handle)
@@ -194,52 +221,104 @@ class IntegrationTests(unittest.TestCase):
             data = get_tabs()
             assert_that(data, has_length(1))
             tab = self.get_unique(data, to_keep)
-            self.assertEqual(tab['title'], 'Two Site')
+            self.assertEqual(tab["title"], "Two Site")
 
     def test_focus_tabs(self):
-        with MultiHttpServer([('static', 9919, '127.0.7.1'),
-                              ('static', 12830, '127.0.8.1')]):
-            self.client.navigate('http://127.0.7.1:9919/one.html')
+        with MultiHttpServer(
+            [("static", 9919, "127.0.7.1"), ("static", 12830, "127.0.8.1")]
+        ):
+            self.client.navigate("http://127.0.7.1:9919/one.html")
 
-            new_page = self.client.open(type='tab')['handle']
+            new_page = self.client.open(type="tab")["handle"]
             self.client.switch_to_window(new_page)
-            self.client.navigate('http://127.0.8.1:12830/four.html')
+            self.client.navigate("http://127.0.8.1:12830/four.html")
 
-            new_page = self.client.open(type='tab')['handle']
+            new_page = self.client.open(type="tab")["handle"]
             self.client.switch_to_window(new_page)
-            self.client.navigate('http://127.0.7.1:9919/four.html')
+            self.client.navigate("http://127.0.7.1:9919/four.html")
 
-            new_page = self.client.open(type='window')['handle']
+            new_page = self.client.open(type="window")["handle"]
             self.client.switch_to_window(new_page)
-            self.client.navigate('http://127.0.7.1:9919/three.html')
+            self.client.navigate("http://127.0.7.1:9919/three.html")
 
             data = get_tabs()
             assert_that(data, has_length(4))
 
             url = self.client.get_url()
-            self.assertEqual(url, 'http://127.0.7.1:9919/three.html')
+            self.assertEqual(url, "http://127.0.7.1:9919/three.html")
 
-            target_url = 'http://127.0.8.1:12830/four.html'
+            target_url = "http://127.0.8.1:12830/four.html"
             tab_info = self.get_unique(data, target_url)
             self.activate_tab(tab_info)
 
             url = self.client.get_url()
             self.assertEqual(url, target_url)
 
-            target_url = 'http://127.0.7.1:9919/three.html'
+            target_url = "http://127.0.7.1:9919/three.html"
             tab_info = self.get_unique(data, target_url)
             self.activate_tab(tab_info)
 
             url = self.client.get_url()
             self.assertEqual(url, target_url)
 
-            target_url = 'http://127.0.8.1:12830/four.html'
+            target_url = "http://127.0.8.1:12830/four.html"
             tab_info = self.get_unique(data, target_url)
-            self.activate_tab(tab_info)
+            self.activate_tab(tab_info, prefix="p0001_")
 
             url = self.client.get_url()
             self.assertEqual(url, target_url)
 
+            with self.client.using_context(self.client.CONTEXT_CHROME):
+                actual_title = self.client.title
 
-if __name__ == '__main__':
+            expected_title = "p0001_Site Four "
+            assert_that(actual_title, starts_with(expected_title))
+
+            self.activate_tab(tab_info, reset=True)
+
+            with self.client.using_context(self.client.CONTEXT_CHROME):
+                actual_title = self.client.title
+
+            expected_title = "Site Four "
+            assert_that(actual_title, starts_with(expected_title))
+
+    @unittest.skipIf(
+        HOST_TARGET_VERSION and HOST_TARGET_VERSION <= version.parse('0.1.7'),
+        reason="Only works with native host > 0.1.7",
+    )
+    def test_activate_invalid_tab(self):
+        with MultiHttpServer(
+            [("static", 9919, "127.0.7.1"), ("static", 12830, "127.0.8.1")]
+        ):
+            self.client.navigate("http://127.0.7.1:9919/one.html")
+
+            new_page = self.client.open(type="tab")["handle"]
+            self.client.switch_to_window(new_page)
+            self.client.navigate("http://127.0.8.1:12830/four.html")
+
+            new_page = self.client.open(type="tab")["handle"]
+            self.client.switch_to_window(new_page)
+            self.client.navigate("http://127.0.7.1:9919/four.html")
+
+            data = get_tabs()
+            assert_that(data, has_length(3))
+
+            url = self.client.get_url()
+            self.assertEqual(url, "http://127.0.7.1:9919/four.html")
+
+            chosen_tab = self.get_unique(data, "http://127.0.8.1:12830/four.html")
+            # # Bad tab id!
+            chosen_tab["tab_id"] = max(x["tab_id"] for x in data) + 1000
+
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.activate_tab(chosen_tab, prefix="abcdefg1234567_")
+
+            data = get_tabs()
+            assert_that(data, has_length(3))
+
+            url = self.client.get_url()
+            self.assertEqual(url, "http://127.0.7.1:9919/four.html")
+
+
+if __name__ == "__main__":
     unittest.main()
