@@ -15,7 +15,7 @@ with open('manifest.json', 'r', encoding='utf-8') as f:
 version="$(manifest-attribute version)"
 
 npm rebuild
-npm install
+npm ci
 
 PATH="$THIS_SCRIPT_DIR"/node_modules/.bin/:"$PATH"
 
@@ -23,7 +23,7 @@ mkdir -p icons
 output_path="$PWD"/icons/tabreport.svg
 
 pushd ../assets || exit 1
-npm install
+npm ci
 node make-icon.js "$output_path"
 popd || exit 1
 
