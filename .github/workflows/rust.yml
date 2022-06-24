@@ -19,7 +19,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v2
       with:
-        node-version: '17'
+        node-version: "18.4.0"
     - uses: abbbi/github-actions-tune@0b48641ceb645d4ad4573b0d17b770d85770f9c7
     - name: Cache cargo packages
       uses: actions/cache@v2
@@ -32,12 +32,13 @@ jobs:
           ${{ runner.os }}-cargo2-
     - run: rustup component add rustfmt
     - run: rustup component add clippy
+    - run: cargo install cargo-cache
     - run: sudo apt-get update -y
-    - run: sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 jq libasound2 libdbus-1-dev libdbus-glib-1-2 libgtk-3-0 libx11-xcb1 libxt6 libxtst6 pkg-config python3 python3-pip python3-venv python3-wheel
+    - run: sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 jq libasound2 libdbus-1-dev libdbus-glib-1-2 libgtk-3-0 libx11-xcb1 libxt6 libxtst6 pkg-config python3 python3-pip python3-venv python3-wheel libpango1.0-dev libgif-dev
     - run: pip3 install --user 'yq==2.12.*'
     - run: mkdir -p ~/.local/bin/
     - name: Set Rust flags
-      run: "cat rustflags | sed s/'^export '/''/gi | grep -v '^#' >> $GITHUB_ENV"
+      run: .github/rustflags.sh >> $GITHUB_ENV
     - name: Set XDG_CACHE_HOME
       # No spaces allowed here, too much work to escape later in shell commands
       run: "echo XDG_CACHE_HOME=${HOME}/cache/ >> $GITHUB_ENV"
@@ -89,6 +90,8 @@ jobs:
       working-directory: integration_tests
       env:
         VIRTUALENV_DIR: ${{ env.XDG_CACHE_HOME }}/virtualenv
+    - name: Prune cargo cache
+      run: cargo cache clean-unref
     - name: Collect test logs
       uses: actions/upload-artifact@v2
       if: ${{ always() }}
