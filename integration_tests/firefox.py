@@ -44,10 +44,12 @@ def get_latest_available_version() -> str:
     versions = sorted(versions)
     latest = versions[-1]
 
+    versions_file = os.path.dirname(os.path.join(os.path.realpath(__file__), 'firefox_versions'))
+    with open(versions_file) as f:
+        sanity_check = max(version.parse(v.strip()) for v in f if v.strip())
+
     # We know this version exists, make sure we found something
     # equal or newer than this.
-    sanity_check = version.parse('99.0b2')
-
     assert latest[0] >= sanity_check, "Latest version sanity check. " + \
         f"Expected >= {sanity_check}, actual {latest[0]}."
 
