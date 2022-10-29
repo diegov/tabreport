@@ -1,6 +1,6 @@
 [package]
 name = "tabreport-common"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["Diego Veralli <tabreport@diegoveralli.net>"]
 edition = "2021"
 
