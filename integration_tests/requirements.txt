@@ -4,3 +4,4 @@ types-requests==2.27.1
 mozprofile==2.5.0
 PyHamcrest==2.0.3
 packaging==21.3
+beautifulsoup4==4.10.0
