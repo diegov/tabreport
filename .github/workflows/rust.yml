@@ -16,13 +16,13 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-node@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
       with:
         node-version: "18.4.0"
     - uses: abbbi/github-actions-tune@0b48641ceb645d4ad4573b0d17b770d85770f9c7
     - name: Cache cargo packages
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ~/.cargo/
@@ -34,7 +34,7 @@ jobs:
     - run: rustup component add clippy
     - run: cargo install cargo-cache
     - run: sudo apt-get update -y
-    - run: sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 jq libasound2 libdbus-1-dev libdbus-glib-1-2 libgtk-3-0 libx11-xcb1 libxt6 libxtst6 pkg-config python3 python3-pip python3-venv python3-wheel libpango1.0-dev libgif-dev
+    - run: sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 jq libasound2 libdbus-1-dev libdbus-glib-1-2 libgtk-3-0 libx11-xcb1 libxt6 libxtst6 pkg-config python3 python3-pip python3-venv python3-wheel libpango1.0-dev libgif-dev tar bzip2
     - run: pip3 install --user 'yq==2.12.*'
     - run: mkdir -p ~/.local/bin/
     - name: Set Rust flags
@@ -50,13 +50,13 @@ jobs:
       run: ./install_native.sh
     - name: Set Artifact env var
       run: echo XPI_FILE=$(cat extension/artifact.txt) >> $GITHUB_ENV
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: extension
         path: extension/tabreport-*.xpi
 
     - name: Cache pip packages
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ${{ env.XDG_CACHE_HOME }}/virtualenv
@@ -64,7 +64,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip2-
     - name: Cache firefox versions
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       # TODO: restoring the cache still makes sense since the latest version might 
       # match one we test in the CI build, but we should ensure there is no full 
       # key match so that the existing cache is not overwritten. We could include
@@ -93,7 +93,7 @@ jobs:
     - name: Prune cargo cache
       run: cargo cache clean-unref
     - name: Collect test logs
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: ${{ always() }}
       with:
         name: test.log
