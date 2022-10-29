@@ -33,14 +33,14 @@ trait KeySignal {
 
 impl KeySignal for SignalData {
     fn sync_complete(&self, sequence_number: u64, error: Option<String>) {
-        let (lock, cvar) = &*self;
+        let (lock, cvar) = self;
         let mut started = lock.lock().unwrap();
         started.insert(sequence_number, error);
         cvar.notify_all();
     }
 
     fn wait_for_sync(&self, sequence_number: u64) -> Result<(), dbus::MethodErr> {
-        let (lock, cvar) = &*self;
+        let (lock, cvar) = self;
         let mut started = lock.lock().map_err(|e| dbus::MethodErr::failed(&e))?;
 
         log(format!("Waiting for {:?}", &sequence_number));
