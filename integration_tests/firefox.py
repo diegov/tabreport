@@ -77,9 +77,10 @@ def get_latest_available_version() -> str:
     versions = sorted(versions)
     latest = versions[-1]
 
-    versions_file = os.path.dirname(
-        os.path.join(os.path.realpath(__file__), "firefox_versions")
+    versions_file = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "firefox_versions"
     )
+
     with open(versions_file) as f:
         sanity_check = max(version.parse(v.strip()) for v in f if v.strip())
 
