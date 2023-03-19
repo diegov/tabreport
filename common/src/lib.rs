@@ -51,16 +51,8 @@ pub fn unpack_tabs(values: &[(TabId, &TabAttributes)]) -> DBusTabInfoList {
 // TODO: use &TabInfo instead of tuple?
 pub fn tab_to_tuple(v: &(TabId, &TabAttributes)) -> DBusTabInfo {
     let attributes = v.1;
-    let title = attributes
-        .title
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| "".to_string());
-    let url = attributes
-        .url
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| "".to_string());
+    let title = attributes.title.as_ref().cloned().unwrap_or_default();
+    let url = attributes.url.as_ref().cloned().unwrap_or_default();
     let window_id = attributes.window_id.unwrap_or(0);
     (v.0, title, url, window_id)
 }
