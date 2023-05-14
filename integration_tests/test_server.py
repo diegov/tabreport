@@ -86,6 +86,7 @@ class MultiHttpServer:
             for server in self.servers:
                 server.__enter__()
         except Exception:
+            # TODO: Exit all servers already entered
             self.__exit__(*sys.exc_info())
             raise
 
