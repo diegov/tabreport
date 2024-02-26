@@ -13,16 +13,16 @@ env:
   DEBIAN_FRONTEND: noninteractive
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
       with:
-        node-version: "18.8.0"
-    - uses: abbbi/github-actions-tune@0b48641ceb645d4ad4573b0d17b770d85770f9c7
+        node-version: "20.11.1"
+    - uses: abbbi/github-actions-tune@81fb919e588c20b7ab52b2cac097d2efd765c714
     - name: Cache cargo packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/
@@ -50,13 +50,13 @@ jobs:
       run: ./install_native.sh
     - name: Set Artifact env var
       run: echo XPI_FILE=$(cat extension/artifact.txt) >> $GITHUB_ENV
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: extension
         path: extension/tabreport-*.xpi
 
     - name: Cache pip packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ${{ env.XDG_CACHE_HOME }}/virtualenv
@@ -64,7 +64,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip2-
     - name: Cache firefox versions
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       # TODO: restoring the cache still makes sense since the latest version might 
       # match one we test in the CI build, but we should ensure there is no full 
       # key match so that the existing cache is not overwritten. We could include
@@ -93,7 +93,7 @@ jobs:
     - name: Prune cargo cache
       run: cargo cache clean-unref
     - name: Collect test logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() }}
       with:
         name: test.log
