@@ -48,7 +48,7 @@ function cleanup() {
         rm -rf "$TMP_HOME"
     fi
 
-    pushd "$START_DIR" && git worktree prune    
+    pushd "$START_DIR" && git worktree prune
 }
 
 trap cleanup ERR EXIT
@@ -97,7 +97,7 @@ done < <(get-ff-versions)
 
 # Backwards compatibility test, since extensions are likely updated automatically
 # whereas the native host is updated manually
-HOST_TARGET_VERSION=0.1.7
+HOST_TARGET_VERSION=0.1.9
 HOST_TARGET_GIT_TAG=v"$HOST_TARGET_VERSION"
 
 mkdir -p "$TMP_HOME"/oldversion

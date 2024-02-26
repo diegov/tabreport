@@ -13,9 +13,9 @@ If you need a real tab switching extension and not just a personal hack like thi
 
 Building the extension requires the following
 
-- Rust and Cargo (tested with version 1.52, older versions might work as well)
+- Rust and Cargo (see the [rust-toolchain file](./rust-toolchain) for the version, older versions might work as well)
 - DBus development headers (eg. package `libdbus-1-dev` on Debian and derivatives)
-- NodeJS and NPM
+- NodeJS v20
 
 ### Steps
 
