@@ -302,7 +302,13 @@ fn main() -> io::Result<()> {
                 attributes.merge(&existing.1);
                 *existing = (curr_time, attributes);
             } else {
-                data.insert(event.tab_info.tab_id, (curr_time, attributes));
+                // We some times receive events with null titles and window ids, for which
+                // we never receive remove events afterwards. Not sure what those are,
+                // they might be the result of a race condition on the extension side, but
+                // as a workaround we ignore them here.
+                if attributes.title.is_some() && attributes.window_id.is_some() {
+                    data.insert(event.tab_info.tab_id, (curr_time, attributes));
+                }
             }
         }
     }
