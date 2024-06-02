@@ -79,14 +79,14 @@ jobs:
     - name: Run integration tests
       if: github.event_name != 'schedule'
       # CI run, test against the versions we specify in the firefox_versions file
-      run: ./run_tests.sh -f origin "$XPI_FILE" 2>>test.log
+      run: ./run_tests.sh -o "$GITHUB_STEP_SUMMARY" -f origin "$XPI_FILE" 2>>test.log
       working-directory: integration_tests
       env:
         VIRTUALENV_DIR: ${{ env.XDG_CACHE_HOME }}/virtualenv
     - name: Run integration tests against latest FF version
       if: github.event_name == 'schedule'
       # Scheduled job, test against the latest FF developer edition (the `-l` option)
-      run: ./run_tests.sh -l -f origin "$XPI_FILE" 2>>test.log
+      run: ./run_tests.sh -o "$GITHUB_STEP_SUMMARY" -l -f origin "$XPI_FILE" 2>>test.log
       working-directory: integration_tests
       env:
         VIRTUALENV_DIR: ${{ env.XDG_CACHE_HOME }}/virtualenv

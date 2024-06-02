@@ -3,6 +3,7 @@
 import sys
 import os
 import os.path
+import argparse
 import subprocess
 import time
 import json
@@ -12,7 +13,7 @@ from firefox import get_marionette, close_all_handles
 import unittest
 from hamcrest import assert_that, has_length, starts_with
 from packaging import version
-from packaging.version import Version
+import snakemd
 
 
 SLEEP_TIME = 0.25
@@ -26,21 +27,9 @@ def get_tabs() -> List[Dict[str, Any]]:
     return json.loads(result)  # type: ignore
 
 
-FF_VERSION = sys.argv[1]
-EXTENSION_PATH = os.path.realpath(sys.argv[2])
-sys.argv = sys.argv[2:]
-
-
-host_version_string = os.environ.get("HOST_TARGET_VERSION")
-if host_version_string:
-    HOST_TARGET_VERSION = version.parse(host_version_string)
-else:
-    HOST_TARGET_VERSION = None
-
-
-print(f"Running tests for extension {EXTENSION_PATH} using Firefox {FF_VERSION}")
-if not os.path.isfile(EXTENSION_PATH):
-    raise FileNotFoundError(EXTENSION_PATH)
+FF_VERSION: str = None  # type: ignore
+EXTENSION_PATH: str = None  # type: ignore
+HOST_TARGET_VERSION: version.Version | version.LegacyVersion | None = None
 
 
 class IntegrationTests(unittest.TestCase):
@@ -320,5 +309,105 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(url, "http://127.0.7.1:9919/four.html")
 
 
+def main():
+    global FF_VERSION, EXTENSION_PATH, HOST_TARGET_VERSION
+
+    parser = argparse.ArgumentParser(
+        prog="tabreport_tests.py", description="Run tabreport integration tests"
+    )
+
+    parser.add_argument(
+        "firefox_version", action="store", help="Version of Firefox to test against"
+    )
+    parser.add_argument(
+        "extension_path", action="store", help="Full path to the built extension"
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="Write test output to OUTPUT, in JUnit XML format",
+        action="store",
+    )
+
+    cli_args, remaining = parser.parse_known_args()
+    sys.argv = [sys.argv[0], *remaining]
+
+    FF_VERSION = cli_args.firefox_version
+    EXTENSION_PATH = cli_args.extension_path
+
+    host_version_string = os.environ.get("HOST_TARGET_VERSION")
+    if host_version_string:
+        HOST_TARGET_VERSION = version.parse(host_version_string)
+    else:
+        HOST_TARGET_VERSION = None
+
+    print(f"Running tests for extension {EXTENSION_PATH} using Firefox {FF_VERSION}")
+    if not os.path.isfile(EXTENSION_PATH):
+        raise FileNotFoundError(EXTENSION_PATH)
+
+    runner = None
+    if cli_args.output:
+        runner = unittest.TextTestRunner(resultclass=_make_result(cli_args.output))
+
+    unittest.main(testRunner=runner, verbosity=3)
+
+
+class MarkdownResult(unittest.result.TestResult):
+    def __init__(self, output_file: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.output_file = output_file
+
+    def stopTestRun(self):
+        doc = snakemd.Document()
+
+        title = f"Test Results - FF version {FF_VERSION}"
+        if HOST_TARGET_VERSION:
+            title += f", native host version {HOST_TARGET_VERSION}"
+
+        doc.add_heading(title, level=2)
+        doc.add_heading("Summary", level=3)
+
+        headers = ["Tests", "Failures", "Errors", "Skipped"]
+        align = [
+            snakemd.Table.Align.RIGHT,
+            snakemd.Table.Align.RIGHT,
+            snakemd.Table.Align.RIGHT,
+            snakemd.Table.Align.RIGHT,
+        ]
+        rows = [
+            [
+                str(self.testsRun),
+                str(len(self.failures)),
+                str(len(self.errors)),
+                str(len(self.skipped)),
+            ]
+        ]
+
+        doc.add_table(headers, rows, align)
+
+        def _render_unsuccessful(data: list[tuple[unittest.TestCase, str]], title: str):
+            if data:
+                doc.add_heading(title, level=3)
+                for testresult, msg in data:
+                    doc.add_block(
+                        snakemd.Heading(snakemd.Inline(f"`{testresult.id()}`"), level=5)
+                    )
+                    doc.add_code(msg, lang="generic")
+
+        _render_unsuccessful(self.failures, "Failures")
+        _render_unsuccessful(self.errors, "Errors")
+
+        with open(self.output_file, "w") as f:
+            f.write(str(doc))
+            f.write("\n\n")
+
+
+def _make_result(output_file: str):
+    def make_result(*args, **kwargs):
+        return MarkdownResult(output_file, *args, **kwargs)
+
+    return make_result
+
+
 if __name__ == "__main__":
-    unittest.main()
+    main()
