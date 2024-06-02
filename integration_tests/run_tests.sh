@@ -102,23 +102,33 @@ function run-suite() {
     local invocation=( dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file" )
     tmpfile=
     if [ "$REPORT_MD_FILE" != "" ]; then
+        echo "Outputting to ${REPORT_MD_FILE}" >&2
         tmpfile="$(mktemp)"
         invocation=( "${invocation[@]}" -o "$tmpfile" )
     fi
 
+    result=0
     if [ "$host_target_version" != "" ]; then
         echo "Running integration tests with Firefox $ff_version and native host version ${host_target_version}" >&2
         echo "" >&2
+        set +e
         HOST_TARGET_VERSION="$host_target_version" "${invocation[@]}"
+        result=$?
+        set -e
     else
         echo "Running integration tests with Firefox $ff_version" >&2
         echo "" >&2
+        set +e
         "${invocation[@]}"
+        result=$?
+        set -e
     fi
 
     if [ "$REPORT_MD_FILE" != "" ]; then
         cat "$tmpfile" >> "$REPORT_MD_FILE"
     fi
+
+    return "$result"
 }
 
 while read -r ff_version; do
