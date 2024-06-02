@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
 
-set -e
-set -o pipefail
+set -eEo pipefail
 
 function usage() {
     echo "Usage: $0 [-f <remote>] [-l] <xpi_file>" 1>&2
     echo "    xpi_file    path of the XPI extension to test" 1>&2
-    echo "    -f          Fetch tag from specified remote for backwards compatibility tests" 1>&2
+    echo "    -f REMOTE   Fetch tag from specified REMOTE for backwards compatibility tests" 1>&2
+    echo "    -o FILE     Write results as markdown to FILE" 1>&2
     echo "    -l          Test against latest available FF version. If not provided, the versions" 1>&2
     echo "                are read from the firefox_versions file." 1>&2
     exit "$1"
 }
 
 FETCH_REMOTE=
+REPORT_MD_FILE=
 FF_USE_LATEST=no
 
-while getopts "f:lh" o; do
+while getopts "f:o:lh" o; do
     case "${o}" in
         f)
             FETCH_REMOTE=${OPTARG}
+            ;;
+        o)
+            REPORT_MD_FILE="${OPTARG}"
             ;;
         l)
             FF_USE_LATEST=yes
@@ -89,10 +93,36 @@ export HOME="$TMP_HOME"
 
 export PATH="$TMP_HOME"/.local/bin:"$PATH"
 
+
+function run-suite() {
+    local ff_version="$1"
+    local xpi_file="$2"
+    local host_target_version="$3"
+
+    local invocation=( dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file" )
+    tmpfile=
+    if [ "$REPORT_MD_FILE" != "" ]; then
+        tmpfile="$(mktemp)"
+        invocation=( "${invocation[@]}" -o "$tmpfile" )
+    fi
+
+    if [ "$host_target_version" != "" ]; then
+        echo "Running integration tests with Firefox $ff_version and native host version ${host_target_version}" >&2
+        echo "" >&2
+        HOST_TARGET_VERSION="$host_target_version" "${invocation[@]}"
+    else
+        echo "Running integration tests with Firefox $ff_version" >&2
+        echo "" >&2
+        "${invocation[@]}"
+    fi
+
+    if [ "$REPORT_MD_FILE" != "" ]; then
+        cat "$tmpfile" >> "$REPORT_MD_FILE"
+    fi
+}
+
 while read -r ff_version; do
-    echo "Running integration tests with Firefox $ff_version" >&2
-    echo "" >&2
-    dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file"
+    run-suite "$ff_version" "$xpi_file"
 done < <(get-ff-versions)
 
 # Backwards compatibility test, since extensions are likely updated automatically
@@ -115,10 +145,6 @@ HOME="$ORIGINAL_HOME" ./install_native.sh "$TMP_HOME"
 popd || exit 1
 
 while read -r ff_version; do
-    if [ "$ff_version" != "" ]; then
-        echo "Running integration tests with Firefox $ff_version and native host version ${HOST_TARGET_VERSION}" >&2
-        echo "" >&2
-        HOST_TARGET_VERSION="$HOST_TARGET_VERSION" dbus-launch "$VIRTUALENV_DIR"/bin/python3 tabreport_tests.py "$ff_version" "$xpi_file"
-    fi
+    run-suite "$ff_version" "$xpi_file" "$HOST_TARGET_VERSION"
     # Execute against latest FF version only
 done < <(get-ff-versions | tail -n 1)
