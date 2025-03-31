@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import shutil
 import subprocess
 import requests
 
@@ -98,25 +99,51 @@ def get_marionette(ff_version: str, extension_path: str) -> Marionette:
     install_dir = os.path.join(cache_dir, f"ff-{ff_version}")
 
     if not os.path.exists(install_dir):
-        url = f"{FF_RELEASES_BASE_URL}/{ff_version}/linux-x86_64/en-GB/firefox-{ff_version}.tar.bz2"
-        os.makedirs(install_dir)
-        r = requests.get(url, allow_redirects=True)
-        r.raise_for_status()
-        with open(os.path.join(install_dir, "firefox.tar.bz2"), "wb") as f:
-            f.write(r.content)
+        install_workdir = install_dir + ".working"
+        if os.path.exists(install_workdir):
+            shutil.rmtree(install_workdir)
+
+        os.makedirs(install_workdir)
+
+        extensions = ["bz2", "xz"]
+        firefox_tarball = None
+
+        for extension in extensions:
+            url = f"{FF_RELEASES_BASE_URL}/{ff_version}/linux-x86_64/en-GB/firefox-{ff_version}.tar.{extension}"
+
+            r = requests.get(url, allow_redirects=True)
+            if r.status_code == 404:
+                continue
+
+            r.raise_for_status()
+
+            firefox_tarball = f"firefox.tar.{extension}"
+
+            with open(os.path.join(install_workdir, firefox_tarball), "wb") as f:
+                f.write(r.content)
+
+        if firefox_tarball is None:
+            raise Exception("Firefox tarball not found on the releases page")
+
         print(
             subprocess.check_output(
-                ["tar", "xf", "firefox.tar.bz2"],
-                cwd=install_dir,
+                ["tar", "xf", firefox_tarball],
+                cwd=install_workdir,
                 encoding="utf-8",
                 stderr=subprocess.STDOUT,
             ),
             file=sys.stderr,
         )
 
+        shutil.move(install_workdir, install_dir)
+
     ff_path = os.path.join(install_dir, "firefox", "firefox")
 
-    client = Marionette(host="localhost", port=12828, bin=ff_path, headless=True)
+    os.environ["MOZ_LOG"] = "*:5"
+
+    os.environ["MOZ_LOG_FILE"] = "/home/d/firefox.log"
+
+    client = Marionette(host="localhost", bin=ff_path, headless=True)
     try:
         client.start_session()
         client.set_pref("xpinstall.signatures.required", False)
