@@ -88,23 +88,6 @@ fn get_option_u32(source: &u32) -> Option<u32> {
     }
 }
 
-pub fn none_to_empty(value: Option<&str>) -> &str {
-    if let Some(value) = value {
-        value
-    } else {
-        ""
-    }
-}
-
-// Can't solve the "" vs "".to_string() issue with AsRef<str>
-pub fn none_to_empty_string(value: Option<String>) -> String {
-    if let Some(value) = value {
-        value
-    } else {
-        "".to_string()
-    }
-}
-
 pub fn empty_to_none(value: String) -> Option<String> {
     if value.is_empty() {
         None
