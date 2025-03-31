@@ -8,7 +8,7 @@ fn activate(
     window_preface: Option<&str>,
 ) -> Result<String, Box<dyn std::error::Error>> {
     run_dbus_action(|proxy| {
-        let args: (u32, &str) = (tab_id, none_to_empty(window_preface));
+        let args: (u32, &str) = (tab_id, window_preface.unwrap_or_default());
         let (msg,): (String,) =
             proxy.method_call("net.diegoveralli.tabreport", "Activate", args)?;
 
