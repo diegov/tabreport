@@ -34,7 +34,7 @@ jobs:
     - run: rustup component add clippy
     - run: cargo install cargo-cache
     - run: sudo apt-get update -y
-    - run: sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 jq libasound2 libdbus-1-dev libdbus-glib-1-2 libgtk-3-0 libx11-xcb1 libxt6 libxtst6 pkg-config python3 python3-pip python3-venv python3-wheel libpango1.0-dev libgif-dev tar bzip2
+    - run: sudo apt-get install -y --no-install-recommends build-essential curl dbus-x11 jq libasound2 libdbus-1-dev libdbus-glib-1-2 libgtk-3-0 libx11-xcb1 libxt6 libxtst6 pkg-config python3 python3-pip python3-venv python3-wheel libpango1.0-dev libgif-dev tar bzip2 xz-utils
     - run: pip3 install --user 'yq==2.12.*'
     - run: mkdir -p ~/.local/bin/
     - name: Set Rust flags
