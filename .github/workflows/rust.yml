@@ -63,19 +63,19 @@ jobs:
         key: ${{ runner.os }}-pip2-${{ hashFiles('integration_tests/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip2-
-    - name: Cache firefox versions
-      uses: actions/cache@v4
-      # TODO: restoring the cache still makes sense since the latest version might 
-      # match one we test in the CI build, but we should ensure there is no full 
-      # key match so that the existing cache is not overwritten. We could include
-      # the current timestamp in the key.
-      if: github.event_name != 'schedule'
-      with:
-        path: |
-          ${{ env.XDG_CACHE_HOME }}/extension_testing
-        key: ${{ runner.os }}-ff2-${{ hashFiles('integration_tests/firefox_versions', 'integration_tests/firefox.py') }}
-        restore-keys: |
-          ${{ runner.os }}-ff2-
+    # - name: Cache firefox versions
+    #   uses: actions/cache@v4
+    #   # TODO: restoring the cache still makes sense since the latest version might 
+    #   # match one we test in the CI build, but we should ensure there is no full 
+    #   # key match so that the existing cache is not overwritten. We could include
+    #   # the current timestamp in the key.
+    #   if: github.event_name != 'schedule'
+    #   with:
+    #     path: |
+    #       ${{ env.XDG_CACHE_HOME }}/extension_testing
+    #     key: ${{ runner.os }}-ff2-${{ hashFiles('integration_tests/firefox_versions', 'integration_tests/firefox.py') }}
+    #     restore-keys: |
+    #       ${{ runner.os }}-ff2-
     - name: Run integration tests
       if: github.event_name != 'schedule'
       # CI run, test against the versions we specify in the firefox_versions file
