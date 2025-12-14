@@ -135,6 +135,8 @@ def get_marionette(ff_version: str, extension_path: str) -> Marionette:
             file=sys.stderr,
         )
 
+        set_no_auto_update_policy(install_workdir)
+
         shutil.move(install_workdir, install_dir)
 
     ff_path = os.path.join(install_dir, "firefox", "firefox")
@@ -156,6 +158,17 @@ def get_marionette(ff_version: str, extension_path: str) -> Marionette:
         raise
 
     return client
+
+
+def set_no_auto_update_policy(install_dir: str) -> None:
+    distribution_path = os.path.join(install_dir, "distribution")
+    os.mkdir(distribution_path)
+    policies_path = os.path.join(distribution_path, "policies.json")
+
+    policies = {"policies": {"DisableAppUpdate": True}}
+
+    with open(policies_path, "w") as f:
+        json.dump(policies, f, indent=2)
 
 
 def close_all_handles(client: Marionette) -> None:
