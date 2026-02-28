@@ -11,7 +11,6 @@ use std::error::Error;
 use std::io::ErrorKind;
 use std::io::Write;
 use std::io::{self, Cursor, Read};
-use std::str;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -286,25 +285,7 @@ fn main() -> io::Result<()> {
             }
         };
 
-        if event.action == "remove" {
-            let mut data = tab_data.lock().unwrap();
-            if data.remove(&event.tab_info.tab_id).is_none() {
-                log(format!("No entry with id {} found", &event.tab_info.tab_id));
-            }
-        } else if event.action == "sync" {
-            log(format!("Received sync for {:?}", event.sequence_number));
-            signal_data.sync_complete(event.sequence_number.unwrap_or(0u64), event.error);
-        } else {
-            let mut data = tab_data.lock().unwrap();
-            let mut attributes = event.tab_info.attributes;
-            let curr_time = SystemTime::now();
-            if let Some(existing) = data.get_mut(&event.tab_info.tab_id) {
-                attributes.merge(&existing.1);
-                *existing = (curr_time, attributes);
-            } else {
-                data.insert(event.tab_info.tab_id, (curr_time, attributes));
-            }
-        }
+        process_event(event, &tab_data, &signal_data);
     }
 
     dbus_thread.join().unwrap();
@@ -312,23 +293,47 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
+fn process_event(event: TabEvent, tab_data: &Mutex<TabData>, signal_data: &SignalData) {
+    if event.action == "remove" {
+        let mut data = tab_data.lock().unwrap();
+        if data.remove(&event.tab_info.tab_id).is_none() {
+            log(format!("No entry with id {} found", &event.tab_info.tab_id));
+        }
+    } else if event.action == "sync" {
+        log(format!("Received sync for {:?}", event.sequence_number));
+        signal_data.sync_complete(event.sequence_number.unwrap_or(0u64), event.error);
+    } else {
+        let mut data = tab_data.lock().unwrap();
+        let mut attributes = event.tab_info.attributes;
+        let curr_time = SystemTime::now();
+        if let Some(existing) = data.get_mut(&event.tab_info.tab_id) {
+            attributes.merge(&existing.1);
+            *existing = (curr_time, attributes);
+        } else if event.action != "activate" {
+            // After some investigations into the "ghost" tabs with null attributes,
+            // we see we're getting "update" events with null values after a tab
+            // has been removed. Those are now handled correctly by the extension,
+            // which doesn't even attempt to send them.
+            // "activate" events on the other hand do get sent even if no attributes
+            // have changed, so that we can track the last activation of each tab.
+            // So if they happen to be sent after the removal of the tab, we need to
+            // ensure we don't re-add them to the list here.
+            data.insert(event.tab_info.tab_id, (curr_time, attributes));
+        }
+    }
+}
+
 fn read_tab_info(stdin: &mut io::Stdin) -> io::Result<TabEvent> {
     let mut prefix = vec![0u8; 4];
-    // log("About to read prefix");
     stdin.read_exact(&mut prefix)?;
-
-    // log("Read 4 bytes of prefix");
 
     let mut reader = Cursor::new(prefix);
 
     let msg_len = reader.read_u32::<NativeEndian>()?;
 
-    // log(format!("Decoded message length: {}", msg_len));
-
     let mut data = vec![0u8; msg_len as usize];
     stdin.read_exact(&mut data)?;
 
-    // log("Read the data, decoding utf-8..");
     let msg_str = str::from_utf8(&data).map_err(|e| io::Error::new(ErrorKind::InvalidInput, e))?;
 
     log(msg_str);
@@ -341,5 +346,59 @@ fn read_tab_info(stdin: &mut io::Stdin) -> io::Result<TabEvent> {
             std::panic::panic_any(what)
         }
         Ok(event) => Ok(event),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tabreport_common::TabInfo;
+
+    #[test]
+    fn test_process_event_given_a_new_tab_if_event_is_activate_it_should_not_be_added() {
+        let tab_data = Mutex::new(HashMap::new());
+        let signal_data = (Mutex::new(HashMap::new()), Condvar::new());
+
+        let action = "activate".to_string();
+        let tab_id = 123;
+
+        let event = TabEvent {
+            action,
+            sequence_number: None,
+            error: None,
+            tab_info: TabInfo {
+                tab_id: tab_id,
+                attributes: TabAttributes::default(),
+            },
+        };
+
+        process_event(event, &tab_data, &signal_data);
+
+        let data = tab_data.lock().unwrap();
+        assert!(data.get(&tab_id).is_none());
+    }
+
+    #[test]
+    fn test_process_event_given_a_new_tab_if_event_is_update_it_should_be_added() {
+        let tab_data = Mutex::new(HashMap::new());
+        let signal_data = (Mutex::new(HashMap::new()), Condvar::new());
+
+        let action = "update".to_string();
+        let tab_id = 123;
+
+        let event = TabEvent {
+            action,
+            sequence_number: None,
+            error: None,
+            tab_info: TabInfo {
+                tab_id: tab_id,
+                attributes: TabAttributes::default(),
+            },
+        };
+
+        process_event(event, &&tab_data, &&signal_data);
+
+        let data = tab_data.lock().unwrap();
+        assert!(data.get(&tab_id).is_some());
     }
 }

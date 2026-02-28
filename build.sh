@@ -23,8 +23,6 @@ function check_versions_match {
     fi
 }
 
-source ./rustflags
-
 if [ "$1" == "check" ]; then
     check_versions_match
 
@@ -32,7 +30,10 @@ if [ "$1" == "check" ]; then
     cargo clippy -- -D warnings
     cargo fmt -- --check
     cargo check
+    cargo test
 fi
+
+source ./rustflags
 
 cargo build --release
 
