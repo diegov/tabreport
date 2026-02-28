@@ -20,7 +20,7 @@ pub struct TabInfo {
     pub attributes: TabAttributes,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct TabAttributes {
     pub title: Option<String>,
     pub url: Option<String>,

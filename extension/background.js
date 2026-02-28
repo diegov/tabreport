@@ -54,11 +54,11 @@ function initialise() {
     if (error != null) {
       message['error'] = JSON.stringify(error);
     }
-    
+
     port.postMessage(message);
   });
 
-  function sendUpdate(tabId, changes, force) {
+  function sendUpdateOrActivate(tabId, changes, force, activate) {
     var msg = {};
     for (let change of changes) {
       if (change.title) {
@@ -72,22 +72,28 @@ function initialise() {
       }
     }
 
-    if (Object.keys(msg) || force) {
-      msg['action'] = 'update';
+    if (Object.keys(msg).length > 0 || force) {
+      if (activate) {
+        msg['action'] = 'activate';
+      } else {
+        msg['action'] = 'update';
+      }
       msg['tab_id'] = tabId;
-      port.postMessage(msg);  
+      port.postMessage(msg);
     };
   }
 
   function handleUpdated(tabId, changeInfo, _tabInfo) {
-    sendUpdate(tabId, [changeInfo]);
+    sendUpdateOrActivate(tabId, [changeInfo]);
   }
 
   function handleActivated(info) {
-    sendUpdate(info.tabId, [info], true);
+    console.log('Activating ' + JSON.stringify(info.tabId));
+    sendUpdateOrActivate(info.tabId, [info], true, true);
   }
 
   function handleRemoved(tabId, _info) {
+    console.log('Removing ' + JSON.stringify(tabId));
     port.postMessage({
       action: 'remove',
       tab_id: tabId
@@ -100,7 +106,7 @@ function initialise() {
       let tabs = await browser.tabs.query({windowId: window.id, active: true});
       for (let tab of tabs) {
         if (tab.id) {
-          sendUpdate(tab.id, [tab], true);
+          sendUpdateOrActivate(tab.id, [tab], true, true);
         }
       }
     }
@@ -114,7 +120,7 @@ function initialise() {
   browser.tabs.query({}).then((tabs) => {
     for (let tab of tabs) {
       if (tab.id) {
-        sendUpdate(tab.id, [tab]);
+        sendUpdateOrActivate(tab.id, [tab]);
       } else {
         console.error('No tab id: ' + JSON.stringify(tab));
       }
