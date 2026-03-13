@@ -127,7 +127,7 @@ done < <(get-ff-versions)
 
 # Backwards compatibility test, since extensions are likely updated automatically
 # whereas the native host is updated manually
-HOST_TARGET_VERSION=0.1.9
+HOST_TARGET_VERSION=0.2.0
 HOST_TARGET_GIT_TAG=v"$HOST_TARGET_VERSION"
 
 mkdir -p "$TMP_HOME"/oldversion
