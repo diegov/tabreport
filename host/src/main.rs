@@ -42,7 +42,7 @@ impl KeySignal for SignalData {
         let (lock, cvar) = self;
         let mut started = lock.lock().map_err(|e| dbus::MethodErr::failed(&e))?;
 
-        log(format!("Waiting for {:?}", &sequence_number));
+        log(format!("Waiting for {:?}", sequence_number));
 
         let start = Instant::now();
 
@@ -64,7 +64,7 @@ impl KeySignal for SignalData {
 
         let error = started.remove(&sequence_number);
 
-        log(format!("Synchronized {:?}", &sequence_number));
+        log(format!("Synchronized {:?}", sequence_number));
 
         if let Some(Some(error)) = error {
             return Err(dbus::MethodErr::failed(&error));
@@ -297,7 +297,7 @@ fn process_event(event: TabEvent, tab_data: &Mutex<TabData>, signal_data: &Signa
     if event.action == "remove" {
         let mut data = tab_data.lock().unwrap();
         if data.remove(&event.tab_info.tab_id).is_none() {
-            log(format!("No entry with id {} found", &event.tab_info.tab_id));
+            log(format!("No entry with id {} found", event.tab_info.tab_id));
         }
     } else if event.action == "sync" {
         log(format!("Received sync for {:?}", event.sequence_number));

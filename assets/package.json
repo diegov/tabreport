@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "canvas": "^2.11.2",
-    "two.js": "^0.8.13"
+    "canvas": "^3.0.0",
+    "two.js": "^0.8.23"
   }
 }
