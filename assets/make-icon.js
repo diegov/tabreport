@@ -18,6 +18,9 @@ function place_y(y) {
 var canvas = createCanvas(width, height, type='svg');
 Two.Utils.shim(canvas, Image);
 
+// Workaround, canvas doesn't set this and recent versionss of Two.js require it
+canvas.tagName = "canvas"
+
 var two = new Two({
   width: width,
   height: height,
