@@ -74,6 +74,8 @@ if [ "$VIRTUALENV_DIR" == "" ]; then
     VIRTUALENV_DIR="$PWD"/venv
 fi
 
+./setup.sh "$VIRTUALENV_DIR"
+
 FF_VERSION=
 if [ "$FF_USE_LATEST" == yes ]; then
     FF_VERSION=$("$VIRTUALENV_DIR"/bin/python3 -c 'import firefox; print(firefox.get_latest_available_version())')
@@ -89,10 +91,7 @@ function get-ff-versions {
 
 export HOME="$TMP_HOME"
 
-./setup.sh "$VIRTUALENV_DIR"
-
 export PATH="$TMP_HOME"/.local/bin:"$PATH"
-
 
 function run-suite() {
     local ff_version="$1"
