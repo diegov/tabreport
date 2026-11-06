@@ -1,5 +1,5 @@
 beautifulsoup4>=4.10.0,<5.0.0
-marionette-driver>=3.4.0,<4.0.0
+marionette-driver>=3.7.1,<4.0.0
 mozprofile>=2.5.0,<3.0.0
 packaging>=21.3,<22.0
 PyHamcrest>=2.0.3,<3.0.0
