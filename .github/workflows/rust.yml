@@ -7,6 +7,7 @@ on:
     branches: [ master ]
   schedule:
     - cron: "0 14 * * 5"
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -66,7 +67,7 @@ jobs:
       # match one we test in the CI build, but we should ensure there is no full 
       # key match so that the existing cache is not overwritten. We could include
       # the current timestamp in the key.
-      if: github.event_name != 'schedule'
+      if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
       with:
         path: |
           ${{ env.XDG_CACHE_HOME }}/extension_testing
@@ -74,14 +75,14 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-ff2-
     - name: Run integration tests
-      if: github.event_name != 'schedule'
+      if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
       # CI run, test against the versions we specify in the firefox_versions file
       run: ./run_tests.sh -o "$GITHUB_STEP_SUMMARY" -f origin "$XPI_FILE" 2>>test.log
       working-directory: integration_tests
       env:
         VIRTUALENV_DIR: ${{ env.XDG_CACHE_HOME }}/virtualenv
     - name: Run integration tests against latest FF version
-      if: github.event_name == 'schedule'
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       # Scheduled job, test against the latest FF developer edition (the `-l` option)
       run: ./run_tests.sh -o "$GITHUB_STEP_SUMMARY" -l -f origin "$XPI_FILE" 2>>test.log
       working-directory: integration_tests
